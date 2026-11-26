@@ -1660,6 +1660,14 @@ const saveP = ()=> ls.set(KEY.p, progress);
 const saveO = ()=> ls.set(KEY.o, overrides);
 const saveD = ()=> ls.set(KEY.d, pending);
 
+/* 日期工具：一律按本机时区取 YYYY-MM-DD。
+   不能用 toISOString()：它按 UTC 输出，东八区的早上 8 点前会算成昨天，
+   到期日就会比本地日期早一天。 */
+function ymd(t){
+  const d = (t === undefined || t === null) ? new Date() : new Date(t);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 /* ================= 数据层 ================= */
 const PARTS = window.LEXICON_PARTS || [];
 let WORDS = [];
@@ -1688,7 +1696,7 @@ function newCard(raw){
   overrides[kw] = {
     w: kw, custom: true, mine: true,
     cn:'', pos:'', ipa:'', syl:'', read:'', literal:'', memo:'', struct:[],
-    editedAt: new Date().toISOString().slice(0,10)
+    editedAt: ymd()
   };
   saveO();
   absorbCustom();
@@ -1719,8 +1727,8 @@ function rate(w, k){
   else if(k === 1){ st.box = Math.max(1, st.box); days = 3; }
   else { st.box = Math.min(3, st.box + 1); days = st.box >= 3 ? 30 : 7; }
   const d = new Date(today() + days*DAY);
-  st.due = d.toISOString().slice(0,10);
-  st.last = new Date().toISOString().slice(0,10);
+  st.due = ymd(d);
+  st.last = ymd();
   progress[id] = st;
   saveP();
 }
@@ -2718,7 +2726,7 @@ document.getElementById('eSave').addEventListener('click', () => {
     memo: document.getElementById('eMemo').value.trim(),
     struct: struct,
     mine: true,
-    editedAt: new Date().toISOString().slice(0,10)
+    editedAt: ymd()
   };
   saveO();
   document.getElementById('shEdit').classList.remove('open');
@@ -2792,7 +2800,7 @@ document.getElementById('ioExport').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'vocab-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'vocab-backup-' + ymd() + '.json';
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
 });
