@@ -50,14 +50,23 @@ h1{margin:6px 0 0;font-size:28px;line-height:1.2;letter-spacing:-.02em;font-weig
 
 .weeksel{margin:10px 0 4px;}
 
-/* 周标题 */
-.whead{
-  display:flex;align-items:baseline;gap:8px;margin:22px 2px 10px;
-  font-size:13px;font-weight:700;color:var(--sub);letter-spacing:.02em;
+/* 分组切换（置顶，可横向滑动） */
+.groupsel{
+  position:sticky;top:0;z-index:30;
+  margin:10px -16px 0;padding:10px 16px;
+  background:rgba(242,242,247,.9);
+  -webkit-backdrop-filter:saturate(180%) blur(14px);
+  backdrop-filter:saturate(180%) blur(14px);
+  border-bottom:.5px solid transparent;
+  flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
-.whead .cnt{font-weight:500;color:#C7C7CC;font-size:12px;}
+.groupsel::-webkit-scrollbar{display:none;}
+.groupsel .chip{flex:none;height:30px;padding:0 12px;font-size:12.5px;font-variant-numeric:tabular-nums;}
+.groupsel .chip .g{font-weight:600;}
 
 /* 句子卡 */
+section[data-wid]{margin-top:22px;}
 .list{display:flex;flex-direction:column;gap:12px;}
 .card{
   position:relative;background:var(--card);border-radius:20px;
@@ -142,6 +151,7 @@ h1{margin:6px 0 0;font-size:28px;line-height:1.2;letter-spacing:-.02em;font-weig
     <div class="kicker" id="kicker"></div>
     <h1 id="title"></h1>
   </header>
+  <div class="row groupsel" id="groupbar"></div>
   <div class="row setbar" id="voicebar"></div>
   <div class="row weeksel" id="weekbar"></div>
   <div id="weeks"></div>
@@ -173,7 +183,8 @@ const S = {
   repLeft:0,
   repCard:-1,
   allMode:false,
-  filter:'all'
+  filter:'all',
+  group:0
 };
 S.audio.preload='auto';
 
@@ -201,7 +212,6 @@ function renderVoiceBar(){
   box.innerHTML='';
   const hasDialogue=WEEKS.some(w=>w.mode==='dialogue'||w.mode==='mixed');
   const hasPassage=WEEKS.some(w=>w.mode==='passage'||w.mode==='mixed');
-  const hasMixed=WEEKS.some(w=>w.mode==='mixed');
 
   if(hasDialogue){
     WEEKS.forEach(w=>{
@@ -217,14 +227,9 @@ function renderVoiceBar(){
     });
   }
   if(hasPassage){
-    if(hasMixed){
-      const lb=document.createElement('span');
-      lb.textContent='旁白';
-      lb.style.cssText='font-size:12px;font-weight:600;color:#8E8E93;margin-right:2px;';
-      box.appendChild(lb);
-    }
     const wrap=document.createElement('div');
     wrap.className='seg3';
+    wrap.setAttribute('aria-label','旁白音色');
     [['f','女声'],['m','男声'],['rand','随机']].forEach(([v,t])=>{
       const b=document.createElement('button');
       b.textContent=t; if(S.passageVoice===v) b.className='on';
@@ -244,11 +249,45 @@ function renderWeekBar(){
     const b=document.createElement('button');
     b.className='chip'+(S.filter===id?' sel':'');
     b.innerHTML='<span>'+txt+'</span>';
-    b.onclick=()=>{S.filter=id;renderWeekBar();applyFilter();stopAll();};
+    b.onclick=()=>{S.filter=id;S.group=0;renderWeekBar();renderGroupBar();applyFilter();stopAll();};
     return b;
   };
   box.appendChild(mk('all','全部'));
   WEEKS.forEach(w=>box.appendChild(mk(w.id,w.label)));
+}
+
+/* ---------- 分组：每 6 句一组 ---------- */
+const PER=6;
+function filterGids(){
+  return ALL.filter(x=>S.filter==='all'||x.w.id===S.filter).map(x=>x.gid);
+}
+function groupList(){
+  const g=filterGids(),out=[];
+  for(let i=0;i<g.length;i+=PER) out.push(g.slice(i,i+PER));
+  return out;
+}
+function renderGroupBar(){
+  const box=document.getElementById('groupbar');
+  box.innerHTML='';
+  const gl=groupList();
+  if(gl.length<=1){box.style.display='none';return;}
+  box.style.display='';
+  const mk=(idx,txt)=>{
+    const b=document.createElement('button');
+    b.className='chip'+(S.group===idx?' sel':'');
+    b.innerHTML='<span>'+txt+'</span>';
+    b.onclick=()=>{S.group=idx;renderGroupBar();applyFilter();stopAll();
+      const top=document.getElementById('groupbar').getBoundingClientRect().top+window.pageYOffset-8;
+      if(window.pageYOffset>top) window.scrollTo({top:top,behavior:'smooth'});
+    };
+    return b;
+  };
+  box.appendChild(mk(-1,'全部'));
+  gl.forEach((g,i)=>{
+    box.appendChild(mk(i,(g[0]+1)+'-'+(g[g.length-1]+1)));
+  });
+  const sel=box.querySelector('.chip.sel');
+  if(sel) box.scrollLeft=Math.max(0,sel.offsetLeft-box.clientWidth/2+sel.offsetWidth/2);
 }
 
 /* ---------- 渲染句子 ---------- */
@@ -257,11 +296,6 @@ const listBox=document.getElementById('weeks');
 WEEKS.forEach((w,wi)=>{
   const sec=document.createElement('section');
   sec.dataset.wid=w.id;
-
-  const head=document.createElement('div');
-  head.className='whead';
-  head.innerHTML='<span>'+w.label+' · '+w.day+'</span><span class="cnt">'+w.sentences.length+' 句</span>';
-  sec.appendChild(head);
 
   const list=document.createElement('div');
   list.className='list';
@@ -333,12 +367,28 @@ WEEKS.forEach((w,wi)=>{
 
 /* ---------- 筛选 ---------- */
 function applyFilter(){
+  const gl=groupList();
+  const sel=(S.group>=0&&gl[S.group])?new Set(gl[S.group]):null;
   document.querySelectorAll('#weeks section').forEach(sec=>{
-    sec.style.display=(S.filter==='all'||sec.dataset.wid===S.filter)?'':'none';
+    const on=(S.filter==='all'||sec.dataset.wid===S.filter);
+    let shown=0;
+    sec.querySelectorAll('.card').forEach(c=>{
+      const vis=on&&(!sel||sel.has(+c.dataset.gid));
+      c.style.display=vis?'':'none';
+      if(vis) shown++;
+    });
+    sec.style.display=(on&&shown)?'':'none';
   });
 }
 function visibleGids(){
-  return ALL.filter(x=>(S.filter==='all'||x.w.id===S.filter)&&x.dom.style.display!=='none').map(x=>x.gid);
+  const out=[];
+  document.querySelectorAll('#weeks section').forEach(sec=>{
+    if(sec.style.display==='none') return;
+    sec.querySelectorAll('.card').forEach(c=>{
+      if(c.style.display!=='none') out.push(+c.dataset.gid);
+    });
+  });
+  return out;
 }
 
 /* ---------- 播放核心 ---------- */
@@ -472,6 +522,7 @@ document.getElementById('rate').onclick=e=>{
 /* ---------- 启动 ---------- */
 renderVoiceBar();
 renderWeekBar();
+renderGroupBar();
 applyFilter();
 </script>
 </body>
