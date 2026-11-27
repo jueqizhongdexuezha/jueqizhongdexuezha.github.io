@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>北师大五上 · 课文点读</title>
+<style>
+:root{--fg:#1D1D1F;--sub:#86868B;--line:#E5E5EA;--blue:#3B6EF6;--bg:#FFFFFF;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;background:#F7F7FA;color:var(--fg);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;}
+.wrap{max-width:640px;margin:0 auto;padding:32px 20px 56px;}
+.kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);margin:0 0 6px;}
+h1{font-size:30px;line-height:1.25;margin:0 0 8px;letter-spacing:-.02em;}
+.sub{color:var(--sub);font-size:14px;margin:0 0 24px;}
+.units{display:flex;flex-direction:column;gap:12px;}
+.unit{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+.uhead{width:100%;display:flex;align-items:center;gap:10px;padding:16px 18px;border:none;
+  background:#fff;font:inherit;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;}
+.uhead:active{background:#F5F5F7;}
+.unit.done .uhead{background:#FAFBFF;}
+.unit.done .uhead .ut{color:var(--fg);}
+.unit.todo .uhead .ut{color:#B9B9C0;}
+.uhead .ut{font-size:17px;font-weight:700;letter-spacing:-.01em;}
+.uhead .um{color:var(--sub);font-size:13px;margin-left:auto;}
+.uhead .cv{font-size:10px;color:#C7C7CC;transition:transform .2s ease;flex:none;}
+.unit.open .uhead .cv{transform:rotate(180deg);}
+.ulist{display:none;flex-direction:column;gap:8px;padding:0 12px 12px;}
+.unit.open .ulist{display:flex;}
+.ulist .row{display:flex;align-items:center;gap:10px;padding:13px 15px;border:1px solid var(--line);
+  border-radius:12px;text-decoration:none;color:inherit;background:#fff;transition:.18s;}
+a.row:active{transform:scale(.985);background:#F5F5F7;}
+.ulist .row .n{font-size:15.5px;font-weight:600;}
+.ulist .row .m{color:var(--sub);font-size:13px;margin-left:auto;}
+.ulist .row .dot{width:7px;height:7px;border-radius:50%;background:#34C759;flex:0 0 auto;}
+.ulist .row.done{border-color:#DCE6FF;background:#FAFBFF;}
+.ulist .row.todo{color:#C7C7CC;background:#FAFAFA;border-style:dashed;}
+.ulist .row.todo .m{color:#C7C7CC;}
+.hint{color:var(--sub);font-size:12px;line-height:1.7;margin-top:26px;}
+</style>
+</head>
+<body data-tier="free">
+<div class="wrap">
+  <p class="kicker">北师大版 五年级上册</p>
+  <h1>北师大五上 · 课文点读</h1>
+  <p class="sub">六个单元 · 每单元四课 · 已完成 4 课 / 共 52 句</p>
+  <div class="units"><section class="unit open done"><button class="uhead" type="button"><span class="ut">Unit 1</span><span class="um">4 课 · 52 句</span><span class="cv">&#9660;</span></button><div class="ulist"><a class="row done" href="lesson_bnu5a_w01.html"><span class="dot"></span><span class="n">Lesson 1</span><span class="m">17 句</span></a><a class="row done" href="lesson_bnu5a_w02.html"><span class="dot"></span><span class="n">Lesson 2</span><span class="m">11 句</span></a><a class="row done" href="lesson_bnu5a_w03.html"><span class="dot"></span><span class="n">Lesson 3</span><span class="m">13 句</span></a><a class="row done" href="lesson_bnu5a_w04.html"><span class="dot"></span><span class="n">Lesson 4</span><span class="m">11 句</span></a></div></section>
+    <section class="unit todo"><button class="uhead" type="button"><span class="ut">Unit 2</span><span class="um">待更新</span><span class="cv">&#9660;</span></button><div class="ulist"><div class="row todo"><span class="n">Lesson 1</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 2</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 3</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 4</span><span class="m">待更新</span></div></div></section>
+    <section class="unit todo"><button class="uhead" type="button"><span class="ut">Unit 3</span><span class="um">待更新</span><span class="cv">&#9660;</span></button><div class="ulist"><div class="row todo"><span class="n">Lesson 1</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 2</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 3</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 4</span><span class="m">待更新</span></div></div></section>
+    <section class="unit todo"><button class="uhead" type="button"><span class="ut">Unit 4</span><span class="um">待更新</span><span class="cv">&#9660;</span></button><div class="ulist"><div class="row todo"><span class="n">Lesson 1</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 2</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 3</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 4</span><span class="m">待更新</span></div></div></section>
+    <section class="unit todo"><button class="uhead" type="button"><span class="ut">Unit 5</span><span class="um">待更新</span><span class="cv">&#9660;</span></button><div class="ulist"><div class="row todo"><span class="n">Lesson 1</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 2</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 3</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 4</span><span class="m">待更新</span></div></div></section>
+    <section class="unit todo"><button class="uhead" type="button"><span class="ut">Unit 6</span><span class="um">待更新</span><span class="cv">&#9660;</span></button><div class="ulist"><div class="row todo"><span class="n">Lesson 1</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 2</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 3</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 4</span><span class="m">待更新</span></div></div></section></div>
+  <p class="hint">点单元标题可展开/收起该单元的课。<br>灰色为待更新课次，会逐步补齐；课文点读长期免费。</p>
+</div>
+<script>
+document.querySelectorAll('.uhead').forEach(function(h){
+  h.addEventListener('click', function(){ h.parentNode.classList.toggle('open'); });
+});
+</script>
+</body>
+</html>
