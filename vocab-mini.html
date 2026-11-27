@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -349,6 +349,35 @@
     color:var(--ink3);
   }
 
+  /* 词素账本：结构块末尾一行构件提示，克制、不抢戏 */
+  .mph{
+    margin-top:12px;
+    padding-top:10px;
+    border-top:1px dotted var(--line);
+    font-size:12.5px;
+    color:var(--ink3);
+    line-height:1.95;
+  }
+  .mph .mrow{display:block}
+  .mph .mtag{
+    display:inline-block;
+    padding:0 5px;
+    margin-right:6px;
+    border-radius:4px;
+    font-size:11px;
+    line-height:17px;
+  }
+  .mph .mtag.s{background:rgba(0,110,220,.10);color:#0a63b0}
+  .mph .mtag.f{background:rgba(200,110,0,.13);color:#a15a00}
+  .mph .mtag.w{background:rgba(20,120,90,.12);color:#0e7355}
+  .mph b{font-weight:600;color:var(--ink);letter-spacing:.02em}
+  .mph .mw{color:inherit;border-bottom:1px dotted currentColor;cursor:pointer;text-decoration:none}
+  .mph .mw:hover{color:var(--ink)}
+  /* 另有词也用到的构件：可点，虚线下划线示意「点得动」 */
+  .mph b.jm{cursor:pointer;border-bottom:1px dashed currentColor;padding-bottom:1px}
+  .mph b.jm:hover{color:var(--blue);border-bottom-style:solid}
+  .mph .mmore{opacity:.7}
+
   details.more{
     margin-top:20px;
     border-top:1px solid var(--line);
@@ -492,6 +521,27 @@
   .pendlist{max-height:230px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink2);line-height:1.9;background:#fbfbfd}
   kbd{font-family:inherit;font-size:11px;background:#f0f0f3;border-radius:4px;padding:1px 5px;color:var(--ink2)}
 
+  /* ---------- 词素账本面板：三栏清单，纯文字，不上图表 ---------- */
+  .bktop{font-size:12px;color:var(--ink3);margin:0 0 16px;letter-spacing:.03em}
+  .bkcol{margin-bottom:20px}
+  .bkcol:last-child{margin-bottom:2px}
+  .bkh{font-size:13px;font-weight:600;color:var(--ink);padding-bottom:6px}
+  .bkh span{font-size:11px;color:var(--ink3);font-weight:400;margin-left:8px}
+  .bkrow{
+    display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+    padding:7px 0;border-top:1px solid var(--line);font-size:13px;color:var(--ink);
+  }
+  .bkrow .bkk{font-weight:600;letter-spacing:.02em;min-width:46px}
+  .bkrow .bkt{font-size:10.5px;border-radius:4px;padding:0 5px;line-height:17px}
+  .bkrow .bkt.s{background:rgba(0,110,220,.10);color:#0a63b0}
+  .bkrow .bkt.f{background:rgba(200,110,0,.13);color:#a15a00}
+  .bkrow .bkt.w{background:rgba(20,120,90,.12);color:#0e7355}
+  .bkrow .bkn{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums}
+  .bkrow .bkw{flex:1 1 150px;font-size:12px;color:var(--ink3);line-height:1.9}
+  .bkrow .bkw a{color:var(--blue);cursor:pointer;border-bottom:1px dotted currentColor}
+  .bkrow .bkwt{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums}
+  .bkempty{font-size:12px;color:var(--ink3);padding:8px 0 2px;border-top:1px solid var(--line)}
+
   @media (max-width:820px){
     aside{display:none}
     .card{padding:24px 22px 20px;border-radius:18px}
@@ -512,6 +562,7 @@
   </div>
   <button class="iconbtn" id="btnReview" title="只看到期复习">复习 <span id="dueCount" style="opacity:.5"></span></button>
   <button class="iconbtn" id="btnList" title="词表">词表</button>
+  <button class="iconbtn" id="btnBook" title="词素账本">账本</button>
   <button class="iconbtn" id="btnIO" title="导入 / 导出">导入</button>
 </header>
 
@@ -529,6 +580,17 @@
   <button class="rbtn" data-k="0">不认识<small>1</small></button>
   <button class="rbtn" data-k="1">模糊<small>2</small></button>
   <button class="rbtn" data-k="2">认识<small>3</small></button>
+</div>
+
+<!-- 词素账本面板 -->
+<div class="sheet" id="shBook">
+  <div class="panel">
+    <h3>词素账本</h3>
+    <p class="hint">只记你真看过、真拆过的构件。真词源、自造、你自己划的「我」，三栏分开算，永远不合栏。右边的数字是权重：用到这个词的全部背记数据累加，背得越多、错得越多越靠前。</p>
+    <div class="bktop" id="bkTop"></div>
+    <div id="bkBody"></div>
+    <div class="prow"><button class="btn gho" id="bkClose">关闭</button></div>
+  </div>
 </div>
 
 <!-- 编辑面板 -->
@@ -564,6 +626,12 @@
       <button class="btn gho" id="ioCopy">复制没填完的清单</button>
       <button class="btn gho" id="ioExport">导出全部数据</button>
     </div>
+    <div class="prow" style="justify-content:flex-start;margin-top:10px">
+      <button class="btn gho" id="ioBookOut">导出词素账本</button>
+      <button class="btn gho" id="ioBookIn">导入词素账本</button>
+      <input type="file" id="ioBookFile" accept=".json,application/json" style="display:none">
+    </div>
+    <p class="hint" id="ioBookTip" style="margin:6px 0 0">账本＝拆过的构件记下的账（词源件一栏、自造件一栏）。导入是合并，不会覆盖掉本机已有的账。</p>
     <div class="field" style="margin-top:18px"><label>还没填完（缺音标 / 缺结构 / 缺收口句）</label>
       <div class="pendlist" id="pendBox">空</div></div>
     <div class="prow">
@@ -1544,6 +1612,161 @@ window.LEXICON_PARTS.push({
 
 </script>
 <script>
+/* ============================================================
+   data/morph.js —— 词素构件表（规则外置，随便加，主文件不用动）
+   ------------------------------------------------------------
+   这张表就是「拆词素材库」。页面运行时会读它，按类型在词首 / 词尾 /
+   词内找字母串，命中的构件记进本机的词素账本（localStorage: vm.morph.v1）。
+   以后想加新构件：往 items 里再塞一条就行，index.html 一个字都不用改。
+
+   一条构件的字段（一条 = 一个对象）：
+     key   必填  唯一标识，账本按它累计。同一个词根的不同写法共用一条
+     kind  必填  'source' = 真词源（查得到词源书、语料）
+                 'self'   = 自己造的串（成串出现但没词源依据，两栏永不合账）
+     type  必填  prefix(前缀) / suffix(后缀) / root(词根) / letter(字母物象) / family(自造家族)
+     forms 必填  实际去匹配的字母串数组，可以多个写法：[con, com, cor]
+                 前缀看词首、后缀看词尾、词根与家族看词内；同一词可命中多个
+     gloss 建议  一句人话，卡片上直接显示
+     scope 可选  强制匹配位置：start / end / in / none
+                 不写就按 type 推：prefix→start，suffix→end，root/family/letter→in
+                 none = 只当参考资料登记，不自动匹配（歧义太大，宁可不上账）
+     why   可选  scope: none 时写清为什么不自动匹配
+     note  可选  备注
+
+   匹配规则（写在 index.html 里，通用，不含任何具体构件）：
+     · 长串优先；同一位置重叠时留更长的那个（quire 盖住 ire）
+     · 前缀、后缀要求比词本身短；词内匹配不限位置，同一个词里重复出现也只留不重叠的
+     · 一个词通常命中 2~4 个，账本各记各的
+============================================================ */
+window.MORPH_DATA = {
+  version: '1.1.0',
+  updated: '2026-11-27',
+
+  /* 类型的中文标签，卡片上显示用（自造件一律换成「自造」，不出现「根」字） */
+  types: {
+    prefix: { label: '前缀' },
+    suffix: { label: '后缀' },
+    root:   { label: '词根' },
+    letter: { label: '物象' },
+    family: { label: '家族' }
+  },
+
+  /* 权重口径：只吃真实背记数据，系数放这儿，改数字就行，主文件不用动。
+     seen  = 三档复习里点过的次数
+     box   = 现在的复习档位（0 不认识 / 1 模糊 / 2-3 认识，越高越熟）
+     wrong = 听写里打错的次数
+     构件权重 = 用到它的所有词的 (seen*seen系数 + box*box系数 + wrong*wrong系数) 之和 */
+  weights: { seen: 3, box: 4, wrong: 5 },
+
+  items: [
+    /* ================= 一、字母物象（rules.md 第八节） =================
+       单字母物象几乎每个词都有，上账没有信号量，所以 scope: none，
+       只作参考资料登记；两字母及以上的物象照常参与词内匹配。 */
+    { key: 'b',  kind: 'source', type: 'letter', forms: ['b'],  gloss: '房屋（圈块儿地 o，有水源 l）', scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'd',  kind: 'source', type: 'letter', forms: ['d'],  gloss: '大门（凯旋门、金拱门）',       scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'n',  kind: 'source', type: 'letter', forms: ['n'],  gloss: '小门',                         scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'c',  kind: 'source', type: 'letter', forms: ['c'],  gloss: '大嘴',                         scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'f',  kind: 'source', type: 'letter', forms: ['f'],  gloss: '佛手',                         scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'h',  kind: 'source', type: 'letter', forms: ['h'],  gloss: 'high 高处',                    scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'o',  kind: 'source', type: 'letter', forms: ['o'],  gloss: '圈块儿地',                     scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 's',  kind: 'source', type: 'letter', forms: ['s'],  gloss: '蛇',                           scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'm',  kind: 'source', type: 'letter', forms: ['m'],  gloss: '山峰',                         scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'r',  kind: 'source', type: 'letter', forms: ['r'],  gloss: '禾苗',                         scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'l',  kind: 'source', type: 'letter', forms: ['l'],  gloss: '棍子',                         scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'v',  kind: 'source', type: 'letter', forms: ['v'],  gloss: '剪刀手',                       scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'p',  kind: 'source', type: 'letter', forms: ['p'],  gloss: '平面／及格线',                  scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'g',  kind: 'source', type: 'letter', forms: ['g'],  gloss: '哥',                           scope: 'none', why: '单字母几乎词词都有，记账没有信号量' },
+    { key: 'ar', kind: 'source', type: 'letter', forms: ['ar'], gloss: '……样的人（liar 骗子、scholar 学者）' },
+    { key: 'ow', kind: 'source', type: 'letter', forms: ['ow'], gloss: '到处' },
+
+    /* ================= 二、前缀（rules.md 第九节） ================= */
+    { key: 'con',   kind: 'source', type: 'prefix', forms: ['con', 'com', 'cor', 'col'], gloss: '一起' },
+    { key: 're',    kind: 'source', type: 'prefix', forms: ['re'],   gloss: '再、往回' },
+    { key: 'pre',   kind: 'source', type: 'prefix', forms: ['pre'],  gloss: '在前面' },
+    { key: 'pro',   kind: 'source', type: 'prefix', forms: ['pro'],  gloss: '往前' },
+    { key: 'ex',    kind: 'source', type: 'prefix', forms: ['ex', 'ec', 'ef', 'e'], gloss: '出、向外' },
+    { key: 'in',    kind: 'source', type: 'prefix', forms: ['in', 'im', 'il', 'ir'], gloss: '往里（也表“不”）' },
+    { key: 'de',    kind: 'source', type: 'prefix', forms: ['de'],   gloss: '下来、离开' },
+    { key: 'dis',   kind: 'source', type: 'prefix', forms: ['dis', 'di', 'dif'], gloss: '分开' },
+    { key: 'ad',    kind: 'source', type: 'prefix', forms: ['ad', 'at', 'ap', 'ob'], gloss: '朝向、加强' },
+    { key: 'sub',   kind: 'source', type: 'prefix', forms: ['sub', 'suc', 'suf', 'sup', 'sus'], gloss: '在下面' },
+    { key: 'trans', kind: 'source', type: 'prefix', forms: ['trans', 'tran'], gloss: '穿过、转过去' },
+    { key: 'inter', kind: 'source', type: 'prefix', forms: ['inter', 'intel'], gloss: '在……之间' },
+    { key: 'auto',  kind: 'source', type: 'prefix', forms: ['auto'], gloss: '自己' },
+    { key: 'sym',   kind: 'source', type: 'prefix', forms: ['sym', 'syn'], gloss: '一起' },
+    { key: 'sur',   kind: 'source', type: 'prefix', forms: ['sur'],  gloss: '在上面、超出' },
+    { key: 'per',   kind: 'source', type: 'prefix', forms: ['per'],  gloss: '穿过、彻底' },
+    { key: 'pur',   kind: 'source', type: 'prefix', forms: ['pur'],  gloss: '向前（pro- 的古写法）', note: 'purchase 里的 pur-' },
+
+    /* ================= 三、后缀（rules.md 第九节） ================= */
+    { key: 'tion',   kind: 'source', type: 'suffix', forms: ['ation', 'ition', 'ction', 'tion', 'sion'], gloss: '名词尾：动作／结果' },
+    { key: 'ity',    kind: 'source', type: 'suffix', forms: ['ity'],  gloss: '名词尾：性质' },
+    { key: 'ment',   kind: 'source', type: 'suffix', forms: ['ment'], gloss: '名词尾' },
+    { key: 'ive',    kind: 'source', type: 'suffix', forms: ['ive'],  gloss: '形容词尾' },
+    { key: 'ous',    kind: 'source', type: 'suffix', forms: ['ous'],  gloss: '形容词尾：多……的' },
+    { key: 'antent', kind: 'source', type: 'suffix', forms: ['ant', 'ent'], gloss: '形容词／名词尾' },
+    { key: 'al',     kind: 'source', type: 'suffix', forms: ['al'],   gloss: '形容词尾' },
+    { key: 'ly',     kind: 'source', type: 'suffix', forms: ['ly'],   gloss: '副词尾' },
+    { key: 'able',   kind: 'source', type: 'suffix', forms: ['able', 'ible'], gloss: '能……的' },
+    { key: 'ify',    kind: 'source', type: 'suffix', forms: ['ify'],  gloss: '使……' },
+    { key: 'ure',    kind: 'source', type: 'suffix', forms: ['ure'],  gloss: '名词尾' },
+    { key: 'er',     kind: 'source', type: 'suffix', forms: ['er'],   gloss: '……的人', scope: 'none', why: '不是所有 -er 都指人（wander 就不是），自动匹配会误报，留人工判断' },
+    { key: 'ness',   kind: 'source', type: 'suffix', forms: ['ness'], gloss: '名词尾' },
+    /* 补表：-ion、-ate 单独立一条，不再只挂在 tion 那条下面。
+       tion 的最长写法会盖住前面的词根，-ion 单独一条正好接在词根后面（funct+ion、cept+ion）。 */
+    { key: 'ion',    kind: 'source', type: 'suffix', forms: ['ion'], gloss: '名词尾：动作或结果',
+      note: '拉丁 -io/-ionis 经法语 -ion 进英语（function、exception）' },
+    { key: 'ate',    kind: 'source', type: 'suffix', forms: ['ate'], gloss: '动词尾：使……、做……',
+      note: '拉丁 -atus 过去分词尾 → 英语动词 -ate（indicate、create）' },
+
+    /* ================= 四、词根（rules.md 第九节 14 条） ================= */
+    { key: 'spect', kind: 'source', type: 'root', forms: ['spect'], gloss: '看' },
+    { key: 'ject',  kind: 'source', type: 'root', forms: ['ject'],  gloss: '扔' },
+    { key: 'cept',  kind: 'source', type: 'root', forms: ['cept'],  gloss: '拿' },
+    { key: 'tract', kind: 'source', type: 'root', forms: ['tract'], gloss: '拉' },
+    { key: 'port',  kind: 'source', type: 'root', forms: ['port'],  gloss: '搬、港口' },
+    { key: 'vers',  kind: 'source', type: 'root', forms: ['vers', 'vert'], gloss: '转' },
+    { key: 'dic',   kind: 'source', type: 'root', forms: ['dic'],   gloss: '说' },
+    { key: 'st',    kind: 'source', type: 'root', forms: ['st', 'sta', 'stit', 'sist'], gloss: '站' },
+    { key: 'miss',  kind: 'source', type: 'root', forms: ['miss', 'mit'], gloss: '送' },
+    { key: 'quire', kind: 'source', type: 'root', forms: ['quire'], gloss: '寻求' },
+    { key: 'form',  kind: 'source', type: 'root', forms: ['form'],  gloss: '形式' },
+    { key: 'tect',  kind: 'source', type: 'root', forms: ['tect'],  gloss: '盖住' },
+    { key: 'cis',   kind: 'source', type: 'root', forms: ['cis'],   gloss: '切' },
+    { key: 'nom',   kind: 'source', type: 'root', forms: ['nom'],   gloss: '名字' },
+
+    /* ============ 五、词根补充（背词时碰上、查得到词源的，可继续往下加） ============ */
+    { key: 'sour',  kind: 'source', type: 'root', forms: ['sour'],  gloss: '涌出、升起', note: 'source = 涌出来的源头' },
+    { key: 'wand',  kind: 'source', type: 'root', forms: ['wand'],  gloss: '漫游（日耳曼老词干）' },
+    { key: 'bend',  kind: 'source', type: 'root', forms: ['bend'],  gloss: '弯（古英语 bendan 绷紧）' },
+    { key: 'funct', kind: 'source', type: 'root', forms: ['funct'], gloss: '履行' },
+    { key: 'flict', kind: 'source', type: 'root', forms: ['flict'], gloss: '打、撞' },
+    { key: 'nerv',  kind: 'source', type: 'root', forms: ['nerv'],  gloss: '神经' },
+    { key: 'memor', kind: 'source', type: 'root', forms: ['memor'], gloss: '记得' },
+    { key: 'prais', kind: 'source', type: 'root', forms: ['prais'], gloss: '估价（后来变成“夸”）' },
+    { key: 'cess',  kind: 'source', type: 'root', forms: ['cess', 'ced'], gloss: '走、让' },
+    { key: 'pend',  kind: 'source', type: 'root', forms: ['pend', 'pens'], gloss: '挂着' },
+    { key: 'text',  kind: 'source', type: 'root', forms: ['text'],  gloss: '编织' },
+    { key: 'vit',   kind: 'source', type: 'root', forms: ['vit', 'viv'], gloss: '生命' },
+    /* 补表（本轮反查出来的三个洞，都查得到词源） */
+    { key: 'spir',  kind: 'source', type: 'root', forms: ['spir', 'spira', 'spire'], gloss: '呼吸',
+      note: '拉丁 spirare「呼吸」→ inspire / spirit / respiration；拼写里 spirare 缩成 spir(e)' },
+    { key: 'mir',   kind: 'source', type: 'root', forms: ['mir', 'mira', 'mire'], gloss: '惊奇、望',
+      note: '拉丁 mirari「惊奇」→ admire / miracle / mirror；admire = ad + mirari' },
+    { key: 'chase', kind: 'source', type: 'root', forms: ['chase'], gloss: '追、抓',
+      note: '拉丁 captiare → 古法语 chacier「追猎」；purchase = pur-（向前）+ chase（追着去拿）' },
+
+    /* ================= 六、自建家族（rules.md 第九节末尾，成串出现，继续扩） =================
+       这一类是我自己攒的，查不到词源依据，账本单独记在 self 栏，
+       卡片上一律标「自造」，措辞里也不许出现「根」字。 */
+    { key: 'ire', kind: 'self', type: 'family', forms: ['ire'], gloss: 'fire、hire 那条线上成串出现的一串' },
+    { key: 'ash', kind: 'self', type: 'family', forms: ['ash'], gloss: 'crash、flash 那条线上成串出现的一串' },
+    { key: 'ave', kind: 'self', type: 'family', forms: ['ave'], gloss: 'wave、cave 那条线上成串出现的一串' }
+  ]
+};
+
+</script>
+<script>
 /* 打包时内嵌的音频表：键=原来的相对路径，值=data URI。*/
 window.__VM_AUDIO={
 "audio/s/admire_m.mp3":"data:audio/mpeg;base64,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qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NkxHwAAANIAAAAAKqqqqqqqqpMQU1FNC4wqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NkxHwAAANIAAAAAKqqqqqqqqpMQU1FNC4wqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NkxHwAAANIAAAAAKqqqqqqqqpMQU1FNC4wqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NkxHwAAANIAAAAAKqqqqqqqqpMQU1FNC4wqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NkxHwAAANIAAAAAKqqqqqqqqpMQU1FNC4wqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NkxHwAAANIAAAAAKqqqqqqqqpMQU1FNC4wqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NkxHwAAANIAAAAAKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
@@ -1647,7 +1870,7 @@ window.__VM_AUDIO={
    overrides: 手改后的解释，优先于词库
    pending  : 待生成的词
 ==========================================*/
-const KEY = { p:'vm.progress.v1', o:'vm.overrides.v1', d:'vm.pending.v1' };
+const KEY = { p:'vm.progress.v1', o:'vm.overrides.v1', d:'vm.pending.v1', m:'vm.morph.v1' };
 const ls = {
   get(k, def){ try{ const v = localStorage.getItem(k); return v? JSON.parse(v) : def; }catch(e){ return def; } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
@@ -2337,6 +2560,448 @@ function handlePhonAct(act){
   }
 }
 
+/* ================= 词素账本 =================
+   构件表全部来自 data/morph.js，本文件不写死任何具体构件、也不对某个词特判。
+   账本存 localStorage 的 vm.morph.v1，真词源件与自造件分两栏，永不混存：
+     { v:1,
+       source:{ 构件key:{key,type,gloss,n,last,words:{词:{n,last}}} },
+       self  :{ ……同结构 }
+     }
+==========================================*/
+const MDATA  = window.MORPH_DATA || { items: [], types: {} };
+const MTYPES = MDATA.types || {};
+const MITEMS = (MDATA.items || []).map(it => ({
+  key : String(it.key || '').toLowerCase(),
+  kind: it.kind === 'self' ? 'self' : 'source',
+  type: it.type || '',
+  gloss: it.gloss || '',
+  scope: it.scope || '',
+  forms: (Array.isArray(it.forms) && it.forms.length ? it.forms : [it.key])
+           .map(f => String(f).toLowerCase()).filter(Boolean).sort((a, b) => b.length - a.length)
+})).filter(it => it.key && it.forms.length);
+
+/* 匹配位置：不写 scope 就按类型推。前缀看词首、后缀看词尾，其余看词内 */
+function morphScope(it){
+  if(it.scope) return it.scope;
+  if(it.type === 'prefix') return 'start';
+  if(it.type === 'suffix') return 'end';
+  return 'in';
+}
+function morphTypeLabel(it){
+  const t = MTYPES[it.type];
+  return (t && t.label) || it.type || '构件';
+}
+
+/* 通用匹配：长串优先，同一处重叠只留更长的那个（quire 盖住 ire） */
+function morphHits(word){
+  const s = String(word || '').toLowerCase();
+  const raw = [];
+  if(!s) return raw;
+  MITEMS.forEach(it => {
+    const sc = morphScope(it);
+    if(sc === 'none') return;                    // 歧义太大的构件只当参考，不自动上账
+    it.forms.forEach(f => {
+      if(sc === 'start'){
+        if(s.length > f.length && s.lastIndexOf(f, 0) === 0) raw.push({ it:it, f:f, pos:0, len:f.length });
+      } else if(sc === 'end'){
+        if(s.length > f.length && s.slice(-f.length) === f) raw.push({ it:it, f:f, pos:s.length - f.length, len:f.length });
+      } else {
+        let from = 0, p = s.indexOf(f, from), guard = 0;
+        while(p > -1 && guard++ < 24){
+          raw.push({ it:it, f:f, pos:p, len:f.length });
+          from = p + 1;
+          p = s.indexOf(f, from);
+        }
+      }
+    });
+  });
+  raw.sort((a, b) => (b.len - a.len) || (a.pos - b.pos));
+  const kept = [];
+  raw.forEach(h => {
+    const s1 = h.pos, e1 = h.pos + h.len;
+    for(let i = 0; i < kept.length; i++){
+      const k = kept[i];
+      if(!(e1 <= k.pos || s1 >= k.pos + k.len)) return;   // 与已留的重叠 → 让位给更长的
+      if(k.it.key === h.it.key && k.pos === h.pos) return; // 同一条同位置只留一份
+    }
+    kept.push(h);
+  });
+  kept.sort((a, b) => a.pos - b.pos);
+  return kept;
+}
+
+/* 账本本体：读坏 / 缺栏 / 老数据都兜住，不报错。
+   v:1 只有 source / self 两栏；v:2 多了 mine（你自己用编辑面板划的 w「我」），
+   老账本读进来时 mine 自动补空栏，原来的两栏一个字段都不动。 */
+let mbook = ls.get(KEY.m, null);
+function bookOf(){
+  if(!mbook || typeof mbook !== 'object') mbook = { v:2, source:{}, self:{}, mine:{} };
+  if(!mbook.source || typeof mbook.source !== 'object') mbook.source = {};
+  if(!mbook.self   || typeof mbook.self   !== 'object') mbook.self   = {};
+  if(!mbook.mine   || typeof mbook.mine   !== 'object') mbook.mine   = {};
+  mbook.v = 2;
+  return mbook;
+}
+const saveM = () => ls.set(KEY.m, mbook);
+
+/* 看过就记账：构件次数 +1、词次数 +1、最近日期 = 今天（本机时区） */
+function morphRecord(word, hits){
+  if(!hits || !hits.length) return;
+  const id = String(word || '').toLowerCase();
+  if(!id) return;
+  const book = bookOf();
+  const day = ymd();
+  hits.forEach(h => {
+    const col = book[h.it.kind];
+    let e = col[h.it.key];
+    if(!e || typeof e !== 'object') e = col[h.it.key] = { key:h.it.key, type:h.it.type, gloss:h.it.gloss, n:0, last:'', words:{} };
+    e.type = h.it.type;
+    e.gloss = h.it.gloss;
+    e.n = (e.n | 0) + 1;
+    e.last = day;
+    if(!e.words || typeof e.words !== 'object') e.words = {};
+    let we = e.words[id];
+    if(!we || typeof we !== 'object') we = e.words[id] = { n:0, last:'' };
+    we.n = (we.n | 0) + 1;
+    we.last = day;
+  });
+  saveM();
+}
+
+/* ---------- 背记数据反哺：构件权重 ----------
+   权重全部来自真数据，不写死任何词、任何构件：
+     见过的次数 × weights.seen  ＋  当前档位 box × weights.box  ＋  打错次数 × weights.wrong
+   系数放在 data/morph.js 的 weights 里（规则外置，改系数不用动这里）。
+   词的重 = 它这一串背记数据；构件的重 = 用到它的所有词的重量相加。 */
+const MW = Object.assign({ seen:3, box:4, wrong:5 }, (MDATA && MDATA.weights) || {});
+function wordWeight(id){
+  const p = progress[id] || {};
+  const t = typo[id] || {};
+  const seen  = Math.max(0, p.seen | 0);
+  const box   = Math.max(0, p.box  | 0);
+  const wrong = Math.max(0, t.count | 0);
+  return seen * (+MW.seen || 0) + box * (+MW.box || 0) + wrong * (+MW.wrong || 0);
+}
+function entryWeight(e){
+  if(!e || !e.words || typeof e.words !== 'object') return 0;
+  return Object.keys(e.words).reduce((a, w) => a + wordWeight(w), 0);
+}
+function morphWeight(key){
+  const b = bookOf();
+  const e = b.source[key] || b.self[key] || b.mine[key];
+  return entryWeight(e);
+}
+
+/* ---------- 手改件：编辑面板里标 w（我）的切分 ---------- */
+/* 只认 w，r/m 一个都不碰：真词源栏永远由 data/morph.js 决定，用户改不动 */
+function morphMineSegs(id){
+  const o = overrides[String(id || '').toLowerCase()];
+  const st = (o && Array.isArray(o.struct)) ? o.struct : [];
+  const out = [], seen = {};
+  st.forEach(s => {
+    if(!s || String(s.k || '') !== 'w') return;
+    const t = String(s.t == null ? '' : s.t).trim();
+    const k = t.toLowerCase();
+    if(!t || seen[k]) return;
+    seen[k] = 1;
+    out.push({ key:k, t:t, gloss:String(s.g == null ? '' : s.g).trim() });
+  });
+  return out;
+}
+/* 入账：以这次保存的切分为准，删掉的片段连带撤账；每次保存给「出现次数」加一 */
+function morphRecordMine(id, segs){
+  const book = bookOf();
+  const day = ymd();
+  const keep = {};
+  (segs || []).forEach(s => { keep[s.key] = s; });
+  Object.keys(book.mine).forEach(k => {
+    const e = book.mine[k];
+    if(!e || !e.words) return;
+    if(!keep[k]) delete e.words[id];
+  });
+  Object.keys(keep).forEach(k => {
+    const s = keep[k];
+    let e = book.mine[k];
+    if(!e || typeof e !== 'object') e = book.mine[k] = { key:k, type:'mine', gloss:'', text:s.t, n:0, last:'', words:{} };
+    if(!e.words || typeof e.words !== 'object') e.words = {};
+    e.text = s.t;
+    if(s.gloss) e.gloss = s.gloss;
+    e.type = 'mine';
+    let we = e.words[id];
+    if(!we || typeof we !== 'object') we = e.words[id] = { n:0, last:'' };
+    we.n = (we.n | 0) + 1;
+    we.last = day;
+    e.last = day;
+  });
+  Object.keys(book.mine).forEach(k => {
+    const e = book.mine[k];
+    if(!e || !e.words) { delete book.mine[k]; return; }
+    const ws = Object.keys(e.words).filter(w => e.words[w]);
+    if(!ws.length) { delete book.mine[k]; return; }
+    e.n = ws.reduce((a, w) => a + ((e.words[w].n | 0)), 0);
+    let last = '';
+    ws.forEach(w => { const d = String(e.words[w].last || ''); if(d > last) last = d; });
+    e.last = last;
+  });
+  saveM();
+}
+/* 老版本存下的、带 w 的改动：开页面时补进「我改」栏，已经记过的不重复累加 */
+function morphSyncMine(id){
+  const segs = morphMineSegs(id);
+  const book = bookOf();
+  let has = false;
+  Object.keys(book.mine).forEach(k => {
+    const e = book.mine[k];
+    if(e && e.words && e.words[id]) has = true;
+  });
+  if(!segs.length){ if(has) morphRecordMine(id, []); return; }
+  if(has) return;
+  morphRecordMine(id, segs);
+}
+/* 我改这一栏里，同一个片段还被你在哪些词上划过 */
+function mineOthers(key, id){
+  const e = bookOf().mine[key];
+  if(!e || !e.words) return [];
+  return Object.keys(e.words).filter(k => k !== id && BY_W[k]).sort((a, b) => {
+    const la = String((e.words[a] && e.words[a].last) || ''), lb = String((e.words[b] && e.words[b].last) || '');
+    if(la !== lb) return la < lb ? 1 : -1;
+    return wordWeight(b) - wordWeight(a);
+  });
+}
+
+/* 卡片上那一行提示：最多 3 条构件，多的收尾一句，不堆按钮 */
+const MPH_MAX = 3;
+/* 先按权重挑出要露的几条（背得多、错得多的先露），露出来之后仍按词里从左到右排，便于顺着读 */
+function morphPick(hits){
+  const scored = hits.map((h, i) => ({ h:h, i:i, w:morphWeight(h.it.key) }));
+  scored.sort((a, b) => (b.w - a.w) || (a.i - b.i));
+  const top = scored.slice(0, MPH_MAX);
+  top.sort((a, b) => a.i - b.i);
+  return { top: top.map(x => x.h), extra: hits.length - top.length };
+}
+
+/* 词库索引：构件 key → 词库里用到它的词（按词库顺序）。全部现算，不写死任何构件 */
+let MPH_IDX = null, MPH_IDX_N = -1;
+function morphLexicon(){
+  if(MPH_IDX && MPH_IDX_N === WORDS.length) return MPH_IDX;
+  const idx = {};
+  WORDS.forEach(w => {
+    const id = String((w && w.w) || '').toLowerCase();
+    if(!id) return;
+    const once = {};
+    morphHits(id).forEach(h => {
+      const k = h.it.key;
+      if(once[k]) return;
+      once[k] = 1;
+      if(!idx[k]) idx[k] = [];
+      idx[k].push(id);
+    });
+  });
+  MPH_IDX = idx; MPH_IDX_N = WORDS.length;
+  return idx;
+}
+
+/* 这个词库里另外还有哪些词用到这个构件：
+   背过的（账本里有最近日期的）按日期新→旧排前面，其余保持词库顺序 —— 第一个就是点击落点 */
+function morphOthers(key, id){
+  const all = morphLexicon()[key] || [];
+  const book = bookOf();
+  const e = book.source[key] || book.self[key] || { words:{} };
+  const ws = (e.words && typeof e.words === 'object') ? e.words : {};
+  return all.filter(k => k !== id && BY_W[k]).sort((a, b) => {
+    const la = String((ws[a] && ws[a].last) || ''), lb = String((ws[b] && ws[b].last) || '');
+    if(la !== lb) return la < lb ? 1 : -1;
+    const na = (ws[a] && ws[a].n) | 0, nb = (ws[b] && ws[b].n) | 0;
+    if(na !== nb) return nb - na;
+    return 0;                       // 都没有背过记录 → 稳定排序，保持词库顺序
+  });
+}
+
+function morphBookHTML(word){
+  const id = String(word || '').toLowerCase();
+  const hits = morphHits(id);
+  const mseg = morphMineSegs(id);
+  if(!hits.length && !mseg.length) return '';
+  if(hits.length) morphRecord(id, hits);
+  const rows = [];
+  const pick = hits.length ? morphPick(hits) : { top:[], extra:0 };
+  pick.top.forEach(h => {
+    const it = h.it;
+    const others = morphOthers(it.key, id);
+    const shown = others.slice(0, 5);
+    /* 可点条件：词库里另有别的词也用到这个构件；落点＝最近背过的那个，没有就取词库顺序第一个 */
+    const jump = shown.length ? shown[0] : '';
+    const tok = jump
+      ? `<b class="jm" data-mph="${esc(jump)}" title="点一下去看 ${esc(jump)}">${esc(h.f)}</b>`
+      : `<b>${esc(h.f)}</b>`;
+    let tail;
+    if(others.length){
+      const links = shown.map(k => `<a class="mw" data-mph="${esc(k)}">${esc(k)}</a>`).join(' / ');
+      tail = `，这个词库里另有 ${others.length} 个词用到它：${links}${others.length > shown.length ? `…（共 ${others.length} 个）` : ''}`;
+    } else {
+      tail = '，目前只在这一个词里见过';
+    }
+    if(it.kind === 'self'){
+      /* 自造件：措辞与视觉都跟真词源分开，且不许出现「根」字 */
+      rows.push(`<span class="mrow"><span class="mtag f">自造</span>这个 ${tok} 是我自己攒的一串${tail}</span>`);
+    } else {
+      const g = it.gloss ? `在词源里是「${esc(it.gloss)}」` : '';
+      rows.push(`<span class="mrow"><span class="mtag s">${esc(morphTypeLabel(it))}</span>这个 ${tok} ${g}${tail}</span>`);
+    }
+  });
+  const extra = pick.extra;
+  if(extra > 0) rows.push(`<span class="mrow mmore">…另有 ${extra} 个构件也记上了</span>`);
+
+  /* 我改：你在编辑面板里用 w 划的片段，单独一段，样式和措辞都不跟词源栏混 */
+  mseg.forEach(s => {
+    const others = mineOthers(s.key, id);
+    const shown = others.slice(0, 5);
+    const jump = shown.length ? shown[0] : '';
+    const tok = jump
+      ? `<b class="jm" data-mph="${esc(jump)}" title="点一下去看 ${esc(jump)}">${esc(s.t)}</b>`
+      : `<b>${esc(s.t)}</b>`;
+    const g = s.gloss ? `，你写的含义是「${esc(s.gloss)}」` : '';
+    const tail = others.length
+      ? `，另有 ${others.length} 个词你也这么划：${shown.map(k => `<a class="mw" data-mph="${esc(k)}">${esc(k)}</a>`).join(' / ')}`
+      : '，目前只有这一个词这么划';
+    rows.push(`<span class="mrow"><span class="mtag w">我</span>这个 ${tok} 是你自己划的${g}${tail}</span>`);
+  });
+  return `<div class="mph">${rows.join('')}</div>`;
+}
+
+/* 导入走合并：次数取大、日期取新、词表取并集 —— 手滑导回旧文件也不会丢账
+   三栏各归各的，导进来也不会串栏 */
+function mergeBook(src){
+  const book = bookOf();
+  const got = { source:0, self:0, mine:0 };
+  ['source', 'self', 'mine'].forEach(col => {
+    const dst = book[col];
+    const from = (src && src[col] && typeof src[col] === 'object') ? src[col] : {};
+    Object.keys(from).forEach(k => {
+      const s = from[k];
+      if(!s || typeof s !== 'object') return;
+      let d = dst[k];
+      if(!d || typeof d !== 'object'){
+        d = dst[k] = { key:k, type:s.type || '', gloss:s.gloss || '', text:s.text || k, n:0, last:'', words:{} };
+        got[col]++;
+      }
+      d.type = d.type || s.type || '';
+      d.gloss = d.gloss || s.gloss || '';
+      if(s.text) d.text = s.text;
+      d.n = Math.max(d.n | 0, s.n | 0);
+      if(String(s.last || '') > String(d.last || '')) d.last = s.last;
+      const sw = (s.words && typeof s.words === 'object') ? s.words : {};
+      if(!d.words || typeof d.words !== 'object') d.words = {};
+      Object.keys(sw).forEach(w => {
+        const x = sw[w] || {};
+        let dw = d.words[w];
+        if(!dw || typeof dw !== 'object') dw = d.words[w] = { n:0, last:'' };
+        dw.n = Math.max(dw.n | 0, x.n | 0);
+        if(String(x.last || '') > String(dw.last || '')) dw.last = x.last;
+      });
+    });
+  });
+  saveM();
+  return got;
+}
+function bookDump(){
+  const b = bookOf();
+  return { v:2, exportedAt:new Date().toISOString(), source:b.source, self:b.self, mine:b.mine };
+}
+
+/* ---------- 账本查看面板：三栏分开列，每个构件多少条、哪些词，词名可点 ---------- */
+const BK_COLS = [
+  { col:'source', title:'真词源', tip:'查得到词源的构件，改不动' },
+  { col:'self',   title:'自造',   tip:'我自己攒的串，没有词源依据' },
+  { col:'mine',   title:'我改',   tip:'你在编辑面板里划的「我」' }
+];
+function bookStats(){
+  const b = bookOf();
+  const out = { source:[], self:[], mine:[] };
+  BK_COLS.forEach(c => {
+    const box = b[c.col] || {};
+    Object.keys(box).forEach(k => {
+      const e = box[k];
+      if(!e || typeof e !== 'object' || !e.words) return;
+      const ws = Object.keys(e.words).filter(w => BY_W[w]);
+      if(!ws.length) return;
+      ws.sort((a, x) => {
+        const wa = wordWeight(a), wx = wordWeight(x);
+        if(wa !== wx) return wx - wa;                       // 背得多、错得多的词排前面
+        return String(e.words[x].last || '') > String(e.words[a].last || '') ? 1 : -1;
+      });
+      out[c.col].push({
+        key: k,
+        text: (c.col === 'mine' ? String(e.text || k) : k),
+        type: e.type || '',
+        label: c.col === 'mine' ? '我' : morphTypeLabel(e),
+        gloss: e.gloss || '',
+        n: e.n | 0,
+        last: String(e.last || ''),
+        words: ws,
+        weight: entryWeight(e)
+      });
+    });
+    out[c.col].sort((a, x) => (x.weight - a.weight) || (x.n - a.n) || (a.key < x.key ? -1 : 1));
+  });
+  return out;
+}
+function bookStatsHTML(){
+  const st = bookStats();
+  const rowHTML = (e, col) => {
+    const cls = col === 'source' ? 's' : (col === 'self' ? 'f' : 'w');
+    const ws = e.words.map(w => `<a data-bkw="${esc(w)}">${esc(w)}</a>`).join(' / ');
+    const gl = e.gloss ? `<span class="bkn">「${esc(e.gloss)}」</span>` : '';
+    return `<div class="bkrow">
+      <span class="bkk">${esc(e.text)}</span>
+      <span class="bkt ${cls}">${esc(e.label)}</span>${gl}
+      <span class="bkn">${e.n} 次</span>
+      <span class="bkw">${ws}</span>
+      <span class="bkwt" title="权重＝这些词的背记数据累加">${e.weight}</span>
+    </div>`;
+  };
+  const cols = BK_COLS.map(c => {
+    const list = st[c.col];
+    const body = list.length
+      ? list.map(e => rowHTML(e, c.col)).join('')
+      : `<div class="bkempty">这一栏还是空的</div>`;
+    return `<div class="bkcol">
+      <div class="bkh">${c.title}<span>${list.length} 条 · ${c.tip}</span></div>
+      ${body}
+    </div>`;
+  }).join('');
+  const top = `真词源 ${st.source.length} 条 · 自造 ${st.self.length} 条 · 我改 ${st.mine.length} 条`;
+  return { top: top, cols: cols };
+}
+function renderBook(){
+  const host = document.getElementById('bkBody');
+  if(!host) return;
+  const h = bookStatsHTML();
+  document.getElementById('bkTop').textContent = h.top;
+  host.innerHTML = h.cols;
+}
+
+/* 对外的只读口子：自测用，也方便以后别的页面来查账 */
+window.VM_MORPH = {
+  items: MITEMS,
+  types: MTYPES,
+  scope: morphScope,
+  label: morphTypeLabel,
+  hits : morphHits,
+  book : bookOf,
+  dump : bookDump,
+  merge: mergeBook,
+  mineSegs  : morphMineSegs,
+  mineSave  : morphRecordMine,
+  mineSync  : morphSyncMine,
+  mineOthers: mineOthers,
+  weight    : wordWeight,
+  cweight   : morphWeight,
+  stats     : bookStats,
+  pick      : morphPick,
+  weights   : MW
+};
+
 /* ================= 渲染：卡片 ================= */
 function esc(s){
   return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -2387,6 +3052,7 @@ function renderCard(){
           <div class="blabel">结构</div>
           <div class="struct">${structHTML(w)}</div>
           <div class="literal" style="margin-top:12px">${esc(w.literal||'')}</div>
+          ${morphBookHTML(w.w)}
         </div>
 
         <div class="block">
@@ -2584,6 +3250,16 @@ document.getElementById('cardHost').addEventListener('click', e => {
     }
     return;
   }
+  /* 词素账本：点构件提示里的词名，直接跳到那个词 */
+  const mw = e.target.closest('[data-mph]');
+  if(mw){
+    e.stopPropagation();
+    const t = String(mw.dataset.mph || '').toLowerCase();
+    const target = BY_W[t];
+    if(target){ go(target); }
+    else { mw.title = '这个词你已经不在词库里了'; }
+    return;
+  }
   const actEl = e.target.closest('[data-act]');
   if(actEl && /^phon/.test(actEl.dataset.act)){
     e.stopPropagation();
@@ -2680,7 +3356,7 @@ function openEdit(){
   document.getElementById('eRead').value = w.read || '';
   document.getElementById('eLiteral').value = w.literal || '';
   document.getElementById('eMemo').value = w.memo || '';
-  document.getElementById('eStruct').value = (w.struct||[]).map(s => `${s.t} | ${s.g||''} | ${s.k==='m'?'m':'r'}`).join('\n');
+  document.getElementById('eStruct').value = (w.struct||[]).map(s => `${s.t} | ${s.g||''} | ${(s.k==='m'||s.k==='w')?s.k:'r'}`).join('\n');
   document.getElementById('shEdit').classList.add('open');
 }
 document.getElementById('eCancel').addEventListener('click', () => document.getElementById('shEdit').classList.remove('open'));
@@ -2729,10 +3405,31 @@ document.getElementById('eSave').addEventListener('click', () => {
     editedAt: ymd()
   };
   saveO();
+  /* 你划的 w 片段进「我改」栏：保存即入账，删掉的行自动撤账，每次保存算一次 */
+  morphRecordMine(id, morphMineSegs(id));
   document.getElementById('shEdit').classList.remove('open');
   renderCard(); renderList();
 });
 document.addEventListener('dblclick', e => { if(e.target.closest('.card')) openEdit(); });
+
+/* ================= 词素账本面板 ================= */
+document.getElementById('btnBook').addEventListener('click', () => {
+  renderBook();
+  document.getElementById('shBook').classList.add('open');
+});
+document.getElementById('bkClose').addEventListener('click', () => document.getElementById('shBook').classList.remove('open'));
+document.getElementById('shBook').addEventListener('click', e => {
+  if(e.target === document.getElementById('shBook')) document.getElementById('shBook').classList.remove('open');
+});
+/* 面板里点词名 → 直接跳到那个词 */
+document.getElementById('bkBody').addEventListener('click', e => {
+  const a = e.target.closest('[data-bkw]');
+  if(!a) return;
+  const w = BY_W[String(a.dataset.bkw || '').toLowerCase()];
+  if(!w) return;
+  document.getElementById('shBook').classList.remove('open');
+  go(w);
+});
 
 /* ================= 导入导出 ================= */
 const shIO = document.getElementById('shIO');
@@ -2795,7 +3492,8 @@ document.getElementById('ioExport').addEventListener('click', () => {
     words: WORDS.length,
     overrides: overrides,
     progress: progress,
-    pending: pending
+    pending: pending,
+    book: bookDump()          // 词素账本一起带走，导入时能还原
   };
   const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
@@ -2804,8 +3502,51 @@ document.getElementById('ioExport').addEventListener('click', () => {
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
 });
+
+/* ---- 词素账本：单独导出 / 导入（合并式还原，不覆盖本机已有的账） ---- */
+function bookTip(t){
+  const el = document.getElementById('ioBookTip');
+  if(el) el.textContent = t;
+}
+document.getElementById('ioBookOut').addEventListener('click', () => {
+  const dump = bookDump();
+  const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vocab-morph-' + ymd() + '.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  bookTip('已导出：词源件 ' + Object.keys(dump.source).length + ' 条、自造件 ' + Object.keys(dump.self).length + ' 条、我改件 ' + Object.keys(dump.mine || {}).length + ' 条。');
+});
+document.getElementById('ioBookIn').addEventListener('click', () => {
+  document.getElementById('ioBookFile').click();
+});
+document.getElementById('ioBookFile').addEventListener('change', ev => {
+  const f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const obj = JSON.parse(String(fr.result || '{}'));
+      const src = (obj && obj.source && obj.self) ? obj
+                : (obj && obj.book && obj.book.source) ? obj.book
+                : (obj && obj.morph && obj.morph.source) ? obj.morph
+                : null;
+      if(!src) throw new Error('这份文件里没有账本（要 source / self 两栏）');
+      const r = mergeBook(src);
+      const b = bookOf();
+      renderCard();
+      bookTip('已导入并合并：新增词源件 ' + r.source + ' 条、自造件 ' + r.self + ' 条、我改件 ' + r.mine + ' 条；本机现有词源件 ' + Object.keys(b.source).length + ' 条、自造件 ' + Object.keys(b.self).length + ' 条、我改件 ' + Object.keys(b.mine || {}).length + ' 条。');
+    }catch(err){
+      bookTip('导入失败：' + (err && err.message ? err.message : '文件读不出来'));
+    }
+    ev.target.value = '';
+  };
+  fr.readAsText(f);
+});
+
 document.getElementById('ioReset').addEventListener('click', () => {
-  if(!confirm('清空本机的复习进度、手改内容和自己开的空卡？词库文件不受影响。')) return;
+  if(!confirm('清空本机的复习进度、手改内容和自己开的空卡？词库文件不受影响。（词素账本单独存，不会被清掉）')) return;
   progress = {}; overrides = {}; saveP(); saveO();
   WORDS = WORDS.filter(w => !w.custom);
   Object.keys(BY_W).forEach(k => { if(BY_W[k] && BY_W[k].custom) delete BY_W[k]; });
@@ -2822,6 +3563,8 @@ function boot(){
     return;
   }
   document.getElementById('side').classList.remove('hide');
+  /* 开页先把以前手改过的 w 片段补进账（跨版本也不丢），再画卡片 */
+  Object.keys(overrides || {}).forEach(k => { try{ morphSyncMine(k); }catch(err){} });
   renderList();
   const arr = pool();
   if(arr.length) go(arr[0]);
