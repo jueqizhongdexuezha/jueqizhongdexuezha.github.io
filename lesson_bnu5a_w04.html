@@ -368,7 +368,9 @@ function renderGroupBar(){
 
 
 /* ---------- 单词库 ---------- */
-const VKEY='renai_vocab_v1';
+/* 词库按册隔离：仁爱九上沿用旧键，其他册各用 vocab_<代号>，避免两本书单词混在一起 */
+const BID=(WEEKS[0]&&WEEKS[0].book)||'renai9a';
+const VKEY=(BID==='renai9a')?'renai_vocab_v1':('vocab_'+BID);
 let VB=[];
 try{VB=JSON.parse(localStorage.getItem(VKEY)||'[]');if(!Array.isArray(VB))VB=[];}catch(e){VB=[];}
 function vSave(){try{localStorage.setItem(VKEY,JSON.stringify(VB));}catch(e){}}
