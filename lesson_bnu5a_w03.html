@@ -41,7 +41,7 @@ h1{margin:6px 0 0;font-size:28px;line-height:1.2;letter-spacing:-.02em;font-weig
 .setbar{margin:14px 0 2px;}
 
 /* 单词库入口（在音色选择之上，避免与置顶分组条挤在一起） */
-.vbar{margin:16px 0 0;flex-wrap:nowrap;}
+.vbar{margin:16px 0 0;padding-bottom:12px;border-bottom:.5px solid var(--line);flex-wrap:nowrap;}
 .vbar .btn{background:var(--card);border:.5px solid var(--line);box-shadow:var(--shadow);}
 .vbar .btn .cnt{color:var(--blue);font-variant-numeric:tabular-nums;}
 .vhint{font-size:12px;color:var(--sub);line-height:1.35;min-width:0;}
@@ -56,13 +56,20 @@ h1{margin:6px 0 0;font-size:28px;line-height:1.2;letter-spacing:-.02em;font-weig
 
 .weeksel{margin:10px 0 4px;}
 
-/* 分组切换（置顶，可横向滑动） */
-.groupsel{
+/* 按部分读（置顶，可横向滑动）——与词库入口分区，互不混淆 */
+.grouprow{
   position:sticky;top:0;z-index:30;
-  margin:8px -16px 0;padding:10px 16px;
+  margin:14px -16px 0;padding:8px 16px;
   background:var(--bg);
   border-bottom:.5px solid var(--line);
   box-shadow:0 6px 10px -10px rgba(0,0,0,.22);
+  flex-wrap:nowrap;align-items:center;
+}
+.gcap{flex:none;font-size:12px;color:var(--sub);white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.gcap b{color:var(--ink);font-weight:600;font-size:12.5px;}
+.groupsel{
+  margin:0;padding:0;background:none;border:0;box-shadow:none;
+  flex:1 1 auto;min-width:0;
   flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
@@ -94,10 +101,20 @@ section[data-wid]{margin-top:22px;}
 .en{margin:0;font-size:19px;line-height:1.62;letter-spacing:-.01em;font-weight:500;}
 .zh{margin:7px 0 0;font-size:13px;line-height:1.5;color:var(--sub);}
 .seg{
-  border-radius:6px;padding:1px 2px;margin:0 -2px;cursor:pointer;
+  border-radius:6px;padding:1px 2px;margin:0 -2px;cursor:default;
   transition:background .16s ease,color .16s ease;
 }
 .seg.on{background:var(--c-soft,#EAF0FF);color:var(--c,#007AFF);}
+/* 段前独立朗读钮：只负责朗读，不参与查词 */
+.segplay{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;margin:0 3px 0 0;padding:0;border:none;border-radius:50%;
+  background:var(--fill,#F2F2F7);color:var(--c,#007AFF);font-size:9px;line-height:1;
+  vertical-align:middle;cursor:pointer;font-family:inherit;
+  transition:transform .12s ease,background .16s ease;
+}
+.segplay:active{transform:scale(.9);}
+.segplay.on{background:var(--c,#007AFF);color:#fff;}
 .pipe{color:#D1D1D6;font-weight:400;padding:0 3px;user-select:none;}
 
 .acts{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:.5px solid var(--line);}
@@ -161,11 +178,12 @@ section[data-wid]{margin-top:22px;}
 #wcard .base{font-size:13px;color:var(--sub);margin-top:4px;min-height:16px;}
 #wcard .gl{font-size:17px;margin-top:10px;line-height:1.5;}
 #wcard .sen{font-size:13px;color:var(--sub);margin-top:10px;line-height:1.55;}
-#wcard .wb{margin-top:16px;display:flex;gap:10px;}
+#wcard .wb{margin-top:16px;display:flex;gap:8px;}
 #wcard .wb .btn{flex:1;height:44px;font-size:15px;}
 #wcard .wb .add{background:var(--text);color:#fff;}
 #wcard .wb .add.on{background:#eef3ff;color:#3B6EF6;}
-#wcard .wb .cls{flex:none;width:96px;}
+#wcard .wb .say{flex:none;width:76px;background:#eef3ff;color:#3B6EF6;}
+#wcard .wb .cls{flex:none;width:82px;}
 /* 词库面板 */
 #vsheet{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column;transform:translateX(102%);transition:transform .26s cubic-bezier(.32,.72,0,1);}
 #vsheet.show{transform:translateX(0);}
@@ -180,6 +198,8 @@ section[data-wid]{margin-top:22px;}
 .vrow .vb{font-size:12px;color:var(--sub);font-weight:400;margin-left:6px;}
 .vrow .vz{font-size:14px;margin-top:3px;}
 .vrow .vs{font-size:12px;color:var(--sub);margin-top:5px;line-height:1.45;}
+.vrow .vsay{flex:none;height:30px;padding:0 11px;border:none;border-radius:999px;background:#eef3ff;color:#3B6EF6;font-size:13px;line-height:1;}
+.vrow .vsay:active{background:#dfe8ff;}
 .vrow .del{flex:none;width:30px;height:30px;border:none;background:#f4f4f6;border-radius:50%;color:#8e8e93;font-size:17px;line-height:1;}
 #vsheet .vfoot{padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.94);border-top:.5px solid var(--line);}
 #vsheet .vfoot .btn{width:100%;height:46px;font-size:16px;background:var(--text);color:#fff;}
@@ -195,9 +215,9 @@ section[data-wid]{margin-top:22px;}
     <div class="kicker" id="kicker"></div>
     <h1 id="title"></h1>
   </header>
-  <div class="row vbar" id="vbar"><button class="btn" id="vopen">单词库 <span id="vcnt">0</span></button><span class="vhint">点句中的单词 → 查义 → 加入词库</span></div>
+  <div class="row vbar" id="vbar"><button class="btn" id="vopen">单词库 <span id="vcnt">0</span></button><span class="vhint">点单词查义 · 加入词库</span></div>
   <div class="row setbar" id="voicebar"></div>
-  <div class="row groupsel" id="groupbar"></div>
+  <div class="row grouprow" id="grouprow"><span class="gcap">▶ 按部分<b>读</b></span><div class="row groupsel" id="groupbar"></div></div>
   <div class="row weeksel" id="weekbar"></div>
   <div id="weeks"></div>
 </div>
@@ -219,6 +239,7 @@ section[data-wid]{margin-top:22px;}
   <div class="gl" id="wgl"></div>
   <div class="sen" id="wsen"></div>
   <div class="wb">
+    <button class="btn say" id="wsay">发音</button>
     <button class="btn add" id="wadd">加入词库</button>
     <button class="btn cls" id="wcls">关闭</button>
   </div>
@@ -353,8 +374,15 @@ function renderGroupBar(){
     b.className='chip'+(S.group===idx?' sel':'');
     b.innerHTML='<span>'+txt+'</span>';
     b.onclick=()=>{S.group=idx;renderGroupBar();applyFilter();stopAll();
-      const top=document.getElementById('groupbar').getBoundingClientRect().top+window.pageYOffset-8;
+      const top=document.getElementById('grouprow').getBoundingClientRect().top+window.pageYOffset-8;
       if(window.pageYOffset>top) window.scrollTo({top:top,behavior:'smooth'});
+      /* 按部分读：只读这一部分的句子，读完即停 */
+      if(idx<0) return;
+      const g=groupList()[idx];
+      if(!g||!g.length) return;
+      S.allMode=true;
+      document.getElementById('all').textContent='停止';
+      start(g[0],-1,0);
     };
     return b;
   };
@@ -376,6 +404,43 @@ try{VB=JSON.parse(localStorage.getItem(VKEY)||'[]');if(!Array.isArray(VB))VB=[];
 function vSave(){try{localStorage.setItem(VKEY,JSON.stringify(VB));}catch(e){}}
 function vHas(w){return VB.some(x=>x.w===w);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+/* ---------- 单词发音：优先在线词典音源，失败回退系统语音 ---------- */
+let dictA=null;
+function ttsWord(t){
+  try{
+    if(!window.speechSynthesis) return;
+    const u=new SpeechSynthesisUtterance(t);
+    u.lang='en-US'; u.rate=.85;
+    const vs=(window.speechSynthesis.getVoices()||[]).filter(v=>/^en/i.test(v.lang));
+    const pref=vs.find(v=>/Aria|Zira|Samantha|Google US English|female/i.test(v.name))||vs[0];
+    if(pref) u.voice=pref;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+function speakWord(w){
+  const t=String(w==null?'':w).trim();
+  if(!t) return;
+  try{S.audio.pause();}catch(e){}
+  let fell=false;
+  const fb=()=>{ if(fell) return; fell=true; ttsWord(t); };
+  try{
+    if(!dictA){dictA=new Audio();dictA.preload='auto';}
+    dictA.onerror=fb;
+    dictA.src='https://dict.youdao.com/dictvoice?type=1&audio='+encodeURIComponent(t);
+    const p=dictA.play();
+    if(p&&p.catch) p.catch(fb);
+  }catch(e){fb();}
+}
+/* 释义 + 课文形：括号内补「课文中：xxx」，说明课文中为何是另一种形式 */
+function zWithBook(z,k){
+  const s=String(z==null?'':z), kk=String(k==null?'':k);
+  if(!kk) return esc(s);
+  const i=s.indexOf('（');
+  const j=(i>=0)?s.indexOf('）',i):-1;
+  if(i>=0&&j>i) return esc(s.slice(0,j))+'；课文中：'+esc(kk)+esc(s.slice(j));
+  return esc(s)+'（课文中：'+esc(kk)+'）';
+}
 function vRender(){
   const n=VB.length;
   const c1=document.getElementById('vcnt'); if(c1)c1.textContent=n;
@@ -384,10 +449,14 @@ function vRender(){
   if(!n){L.innerHTML='<p class="empty">还没有收集单词。<br>在句子里点一下单词，再点「加入词库」。</p>';return;}
   L.innerHTML=VB.map((x,i)=>
     '<div class="vrow"><div class="vm">'+
-      '<div class="vw">'+esc(x.w)+(x.k&&x.k!==x.w?'<span class="vb">'+esc(x.k)+'</span>':'')+'</div>'+
-      '<div class="vz">'+esc(x.z)+'</div>'+
+      '<div class="vw">'+esc(x.w)+'</div>'+
+      '<div class="vz">'+zWithBook(x.z,x.k)+'</div>'+
       (x.s?'<div class="vs">'+esc(x.s)+'</div>':'')+
-    '</div><button class="del" data-i="'+i+'" aria-label="删除">×</button></div>').join('');
+    '</div><button class="vsay" data-i="'+i+'" aria-label="朗读单词">发音</button>'+
+    '<button class="del" data-i="'+i+'" aria-label="删除">×</button></div>').join('');
+  L.querySelectorAll('.vsay').forEach(b=>{
+    b.onclick=function(){const it=VB[+b.getAttribute('data-i')];if(it)speakWord(it.w);};
+  });
   L.querySelectorAll('.del').forEach(b=>{
     b.onclick=()=>{VB.splice(+b.getAttribute('data-i'),1);vSave();vRender();};
   });
@@ -397,10 +466,10 @@ function showWord(gid,k,raw){
   const rec=ALL[gid]; if(!rec)return;
   const sn=rec.sn, g=(sn.gloss||{})[k];
   if(!g)return;
-  CURW={w:g[0],k:(g[0].toLowerCase()!==k?raw:''),z:g[1],s:sn.en,t:Date.now(),book:(rec.w&&rec.w.id)||''};
+  CURW={w:g[0],k:(g[0].toLowerCase()!==String(k).toLowerCase()?raw:''),z:g[1],s:sn.en,t:Date.now(),book:(rec.w&&rec.w.id)||''};
   document.getElementById('whw').textContent=raw;
   document.getElementById('wbase').textContent=(g[0].toLowerCase()!==k.toLowerCase())?('原形：'+g[0]):'';
-  document.getElementById('wgl').textContent=g[1];
+  document.getElementById('wgl').innerHTML=zWithBook(g[1],CURW.k);
   document.getElementById('wsen').textContent=sn.en;
   const btn=document.getElementById('wadd');
   if(vHas(CURW.w)){btn.textContent='已在词库';btn.classList.add('on');}
@@ -433,6 +502,8 @@ document.addEventListener('DOMContentLoaded',function(){
   const wm=document.getElementById('wmask');
   if(wm)wm.onclick=hideWord;
   const wc=document.getElementById('wcls'); if(wc)wc.onclick=hideWord;
+  const ws=document.getElementById('wsay');
+  if(ws)ws.onclick=function(e){if(e)e.stopPropagation();if(CURW)speakWord(CURW.w);};
   const wa=document.getElementById('wadd');
   if(wa)wa.onclick=function(){
     if(!CURW)return;
@@ -486,6 +557,7 @@ WEEKS.forEach((w,wi)=>{
     if(sn.segs&&sn.segs.length){
       enHtml=sn.segs.map((g,i)=>
         (i?'<span class="pipe">|</span>':'')+
+        '<button class="segplay" data-si="'+i+'" aria-label="读这一段">▶</button>'+
         '<span class="seg" data-gid="'+gid+'" data-si="'+i+'">'+tokify(g.text)+'</span>'
       ).join(' ');
     }else{ enHtml=tokify(sn.en); }
@@ -524,15 +596,19 @@ WEEKS.forEach((w,wi)=>{
       const tw=e.target&&e.target.closest?e.target.closest('.w'):null;
       if(tw){e.stopPropagation();showWord(gid,tw.getAttribute('data-w'),tw.textContent);}
     });
-    card.querySelectorAll('.seg').forEach(el=>{
+    card.querySelectorAll('.segplay').forEach(el=>{
       el.onclick=e=>{
         e.stopPropagation();
-        const tw=e.target&&e.target.closest?e.target.closest('.w'):null;
-        if(tw){showWord(gid,tw.getAttribute('data-w'),tw.textContent);return;}
         const s=+el.dataset.si;
-        card.querySelectorAll('.seg').forEach(x=>x.classList.remove('on'));
+        card.querySelectorAll('.segplay').forEach(x=>x.classList.remove('on'));
         el.classList.add('on');
         playSeg(gid,s);
+      };
+    });
+    card.querySelectorAll('.seg').forEach(el=>{
+      el.onclick=e=>{
+        const tw=e.target&&e.target.closest?e.target.closest('.w'):null;
+        if(tw){e.stopPropagation();showWord(gid,tw.getAttribute('data-w'),tw.textContent);}
       };
     });
   });
@@ -644,6 +720,7 @@ function playWhole(gid){
   if(S.curGid===gid&&!S.audio.paused){S.seq++;S.audio.pause();resetRepeat();markPlaying(-1);return;}
   resetRepeat();
   ALL[gid].dom.querySelectorAll('.seg').forEach(x=>x.classList.remove('on'));
+  ALL[gid].dom.querySelectorAll('.segplay').forEach(x=>x.classList.remove('on'));
   start(gid,-1,0);
 }
 function playSeg(gid,si){
