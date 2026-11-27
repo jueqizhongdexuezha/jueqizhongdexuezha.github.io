@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>仁爱英语点读</title>
+<style>
+:root{--fg:#1D1D1F;--sub:#86868B;--line:#E5E5EA;--blue:#3B6EF6;--bg:#FFFFFF;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;}
+.wrap{max-width:640px;margin:0 auto;padding:32px 20px 56px;}
+.kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);margin:0 0 6px;}
+h1{font-size:30px;line-height:1.25;margin:0 0 8px;letter-spacing:-.02em;}
+.sub{color:var(--sub);font-size:14px;margin:0 0 28px;}
+.list{display:flex;flex-direction:column;gap:10px;}
+.row{display:flex;align-items:center;gap:12px;padding:16px 18px;border:1px solid var(--line);
+  border-radius:14px;text-decoration:none;color:inherit;background:#fff;transition:.18s;}
+a.row:active{transform:scale(.985);background:#F5F5F7;}
+.row .n{font-size:17px;font-weight:600;letter-spacing:-.01em;}
+.row .m{color:var(--sub);font-size:13px;margin-left:auto;}
+.row .dot{width:7px;height:7px;border-radius:50%;background:#34C759;flex:0 0 auto;}
+.row.done{border-color:#DCE6FF;background:#FAFBFF;}
+.row.todo{color:#C7C7CC;background:#FAFAFA;border-style:dashed;}
+.row.todo .m{color:#C7C7CC;}
+.sec{margin:26px 0 12px;font-size:13px;color:var(--sub);letter-spacing:.04em;}
+.hint{color:var(--sub);font-size:12px;line-height:1.7;margin-top:26px;}
+</style>
+</head>
+<body data-tier="free">
+<div class="wrap">
+  <p class="kicker">仁爱科普版 2024 · 课文点读</p>
+  <h1>仁爱英语点读</h1>
+  <p class="sub">按句点读 · 想听哪句点哪句</p>
+
+  <p class="sec">已上线</p>
+  <div class="list">
+    <a class="row done" href="book_renai9a.html"><span class="dot"></span>
+      <span class="n">九年级 上册</span><span class="m">已更新 2 周</span></a>
+  </div>
+
+  <p class="sec">即将开启</p>
+  <div class="list">
+    <div class="row todo"><span class="n">七年级</span><span class="m">待教材到位</span></div>
+    <div class="row todo"><span class="n">八年级</span><span class="m">待教材到位</span></div>
+    <div class="row todo"><span class="n">九年级 下册</span><span class="m">待教材到位</span></div>
+  </div>
+
+  <p class="hint">课文点读长期免费，按周更新。<br>使用建议：把这个页面的网址收藏或发给自己，下次直接从微信打开。</p>
+</div>
+</body>
+</html>
