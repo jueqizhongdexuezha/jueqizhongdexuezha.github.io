@@ -228,6 +228,43 @@ section[data-wid]{margin-top:22px;}
 #vta{display:none;margin:0 16px 10px;width:calc(100% - 32px);height:96px;font-size:12px;line-height:1.5;border:.5px solid var(--line);border-radius:10px;padding:8px;font-family:inherit;}
 #vta.show{display:block;}
 #vtip{font-size:12px;color:var(--sub);text-align:center;padding-bottom:8px;}
+#vsheet .vfoot{display:flex;gap:10px;}
+#vsheet .vfoot .btn{flex:1;}
+#vsheet .vfoot #vquiz{background:#eef3ff;color:#3B6EF6;}
+/* 复习闪卡 */
+#qsheet{position:fixed;inset:0;z-index:90;background:linear-gradient(165deg,#f7f9ff 0%,#eef3ff 100%);display:flex;flex-direction:column;transform:translateY(102%);transition:transform .3s cubic-bezier(.32,.72,0,1);}
+#qsheet.show{transform:translateY(0);}
+#qtop{display:flex;align-items:center;gap:10px;padding:14px 16px calc(8px + env(safe-area-inset-top));}
+#qprog{flex:1;text-align:center;font-size:13px;color:var(--sub);}
+#qbar{height:4px;background:rgba(20,40,80,.08);margin:0 20px;border-radius:2px;overflow:hidden;}
+#qbar>i{display:block;height:100%;width:0;background:#3B6EF6;transition:width .25s;}
+#qcard{flex:1;display:flex;align-items:center;justify-content:center;padding:18px 20px 6px;overflow-y:auto;}
+#qbox{width:100%;max-width:430px;min-height:230px;background:#fff;border-radius:20px;box-shadow:0 10px 30px rgba(30,50,90,.13);padding:26px 22px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+#qbox.tap{cursor:pointer;transition:transform .15s;}
+#qbox.tap:active{transform:scale(.985);}
+#qword{font-size:33px;font-weight:700;line-height:1.22;word-break:break-word;}
+#qword.zh{font-size:23px;font-weight:600;line-height:1.45;}
+#qhint{font-size:12px;color:#9A9AA0;margin-top:16px;}
+#qans{display:none;margin-top:16px;padding-top:16px;border-top:.5px solid var(--line);width:100%;}
+#qans.show{display:block;animation:qin .22s ease;}
+@keyframes qin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+#qz{font-size:20px;line-height:1.5;}
+#qn{font-size:12.5px;color:#9A9AA0;margin-top:8px;line-height:1.45;}
+#qsay{flex:none;height:32px;padding:0 14px;border:none;border-radius:999px;background:#eef3ff;color:#3B6EF6;font-size:13px;}
+#qfoot{padding:10px 16px calc(16px + env(safe-area-inset-bottom));display:flex;gap:10px;}
+#qfoot .btn{flex:1;height:52px;font-size:16px;border-radius:15px;}
+#qno{background:#fff;color:#E4572E;border:1px solid #f2d4c9;}
+#qyes{background:#34A853;color:#fff;border:none;}
+#qyes:disabled,#qno:disabled{opacity:.45;}
+#qsum{width:100%;max-width:430px;text-align:center;padding:8px 4px;}
+#qsum .big{font-size:40px;font-weight:700;margin-bottom:6px;}
+#qsum .line{font-size:14px;color:var(--sub);line-height:1.6;}
+#qsum .wlist{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;}
+#qsum .wlist span{background:#fff2ee;color:#C2410C;border-radius:999px;padding:4px 11px;font-size:13px;}
+#qsum .abtn{margin-top:20px;display:flex;gap:10px;}
+#qsum .abtn .btn{flex:1;height:46px;border-radius:13px;}
+#qsum .abtn .again{background:#eef3ff;color:#3B6EF6;}
+#qsum .abtn .back{background:var(--text);color:#fff;}
 
 </style>
 </head>
@@ -281,7 +318,34 @@ section[data-wid]{margin-top:22px;}
   <div id="vlist"></div>
   <textarea id="vta" readonly></textarea>
   <div id="vtip"></div>
-  <div class="vfoot"><button class="btn" id="vcopy">复制全部</button></div>
+  <div class="vfoot">
+    <button class="btn" id="vquiz">复习</button>
+    <button class="btn" id="vcopy">复制全部</button>
+  </div>
+</div>
+
+<div id="qsheet">
+  <div id="qtop">
+    <button class="btn" id="qexit">退出</button>
+    <div id="qprog">0 / 0</div>
+    <button class="btn" id="qdir">换个问法</button>
+  </div>
+  <div id="qbar"><i id="qfill"></i></div>
+  <div id="qcard">
+    <div id="qbox" class="tap">
+      <div id="qword"></div>
+      <div id="qhint">点卡片看答案</div>
+      <div id="qans">
+        <div id="qz"></div>
+        <div id="qn"></div>
+      </div>
+      <button id="qsay">发音</button>
+    </div>
+  </div>
+  <div id="qfoot">
+    <button class="btn" id="qno">不认识</button>
+    <button class="btn" id="qyes">认识</button>
+  </div>
 </div>
 
 <script>
@@ -581,6 +645,93 @@ function vCopy(){
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).catch(()=>{});ok=true;}
   document.getElementById('vtip').textContent=ok?'已复制 '+VB.length+' 个单词，可直接粘贴到背单词软件':'已生成文本，请长按下方文本框全选复制';
 }
+/* ---------- 词库复习（闪卡） ----------
+   规则：认识即出队；不认识转回队尾，本轮最多再出现一次；答完给统计，可只复习错词。
+   两种问法：看英文说中文（默认）/ 看中文想英文。 */
+let QDIR='w2z';
+let Q=null;
+let QBOX_HTML='';
+function qRestoreCard(){
+  const card=document.getElementById('qcard');
+  if(card&&QBOX_HTML) card.innerHTML=QBOX_HTML;
+  const f=document.getElementById('qfoot'); if(f) f.style.display='';
+}
+function qStart(pool){
+  const src=(pool&&pool.length?pool:VB).map(x=>({w:x.w,z:x.z||'',n:x.note||'',retry:false}));
+  if(!src.length){toast('词库还是空的');return;}
+  for(let i=src.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=src[i];src[i]=src[j];src[j]=t;}
+  qRestoreCard();
+  Q={queue:src,total:src.length,known:0,miss:0,wrong:[],cur:null,flip:false};
+  const sh=document.getElementById('qsheet'); if(sh) sh.classList.add('show');
+  qNext();
+}
+function qNext(){
+  if(!Q) return;
+  if(!Q.queue.length){qSum();return;}
+  Q.cur=Q.queue[0]; Q.flip=false;
+  const wd=document.getElementById('qword');
+  if(!wd){qRestoreCard();return;}
+  if(QDIR==='z2w'){wd.textContent=Q.cur.z||Q.cur.w;wd.classList.add('zh');}
+  else{wd.textContent=Q.cur.w;wd.classList.remove('zh');}
+  const hint=document.getElementById('qhint');
+  hint.style.display=''; hint.textContent=(QDIR==='z2w')?'这是释义，想一下英文':'点卡片看答案';
+  const ans=document.getElementById('qans'); if(ans) ans.classList.remove('show');
+  const pg=document.getElementById('qprog'); if(pg) pg.textContent='已记住 '+Q.known+' / '+Q.total;
+  const fl=document.getElementById('qfill'); if(fl) fl.style.width=Math.round(Q.known/Q.total*100)+'%';
+  const sy=document.getElementById('qsay'); if(sy) sy.style.visibility=(QDIR==='z2w')?'hidden':'visible';
+}
+function qFlip(){
+  if(!Q||!Q.cur||Q.flip) return;
+  const z=document.getElementById('qz'),n=document.getElementById('qn'),ans=document.getElementById('qans'),hint=document.getElementById('qhint');
+  if(!z||!ans) return;
+  if(QDIR==='z2w'){z.textContent=Q.cur.w;n.textContent=Q.cur.n||'';if(hint)hint.style.display='none';speakWord(Q.cur.w);}
+  else{z.textContent=Q.cur.z||'（这条还没有释义）';n.textContent=Q.cur.n||'';if(hint)hint.style.display='none';}
+  ans.classList.add('show');
+  Q.flip=true;
+}
+function qJudge(ok){
+  if(!Q||!Q.cur) return;
+  const it=Q.queue.shift();
+  if(ok){Q.known++;}
+  else{
+    Q.miss++;
+    if(!Q.wrong.some(x=>x.w===it.w)) Q.wrong.push(it);
+    if(!it.retry){it.retry=true;Q.queue.push(it);}
+  }
+  Q.cur=null; qNext();
+}
+function qSum(){
+  const card=document.getElementById('qcard'); if(!card) return;
+  const k=Q.known,t=Q.total,wrong=Q.wrong;
+  const f=document.getElementById('qfoot'); if(f) f.style.display='none';
+  card.innerHTML='<div id="qsum"><div class="big">'+k+' / '+t+'</div>'+
+    '<div class="line">'+(wrong.length?('这一轮有 '+wrong.length+' 个词还生，再看一遍就记住了'):'一轮全过，这批词已经认识')+'</div>'+
+    (wrong.length?'<div class="wlist">'+wrong.map(x=>'<span>'+esc(x.w)+'</span>').join('')+'</div>':'')+
+    '<div class="abtn">'+(wrong.length?'<button class="btn again" id="qagain">只练错词</button>':'')+
+    '<button class="btn back" id="qback">回到词库</button></div></div>';
+  const pg=document.getElementById('qprog'); if(pg) pg.textContent='完成';
+  const fl=document.getElementById('qfill'); if(fl) fl.style.width='100%';
+  const ag=document.getElementById('qagain');
+  if(ag) ag.onclick=function(){qStart(wrong.map(x=>({w:x.w,z:x.z,n:x.n})));};
+  const bk=document.getElementById('qback'); if(bk) bk.onclick=qClose;
+}
+function qClose(){
+  const sh=document.getElementById('qsheet'); if(sh) sh.classList.remove('show');
+  Q=null; qRestoreCard(); vRender();
+}
+document.addEventListener('click',function(e){
+  const t=e.target; if(!t||!t.closest) return;
+  if(t.closest('#qsay')){ if(Q&&Q.cur) speakWord(Q.cur.w); return; }
+  if(t.closest('#qyes')){ qJudge(true); return; }
+  if(t.closest('#qno')){ qJudge(false); return; }
+  if(t.closest('#qexit')){ qClose(); return; }
+  if(t.closest('#qdir')){
+    QDIR=(QDIR==='w2z')?'z2w':'w2z';
+    if(Q&&Q.cur) qNext(); else toast('已切换问法');
+    return;
+  }
+  if(t.closest('#qbox')){ if(Q&&Q.cur&&!Q.flip) qFlip(); }
+},true);
 document.addEventListener('DOMContentLoaded',function(){
   const wm=document.getElementById('wmask');
   if(wm)wm.onclick=hideWord;
@@ -612,6 +763,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(confirm('确定清空 '+VB.length+' 个单词吗？清空后无法恢复。')){VB=[];vSave();vRender();document.getElementById('vta').classList.remove('show');document.getElementById('vtip').textContent='';}
   };
   const cp=document.getElementById('vcopy'); if(cp)cp.onclick=vCopy;
+  const qc=document.getElementById('qcard'); if(qc)QBOX_HTML=qc.innerHTML;
+  const vq=document.getElementById('vquiz'); if(vq)vq.onclick=function(){qStart();};
   vRender();
 });
 
