@@ -325,6 +325,91 @@
     line-height:1.5;
     color:var(--ink3);
     letter-spacing:.02em;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  /* 全部音素入口：一行小字，不抢音标的视觉 */
+  .pallbtn{
+    margin-left:auto;
+    font-family:inherit;
+    font-size:11.5px;
+    color:var(--blue);
+    background:none;
+    border:none;
+    padding:2px 0;
+    cursor:pointer;
+    border-bottom:1px dotted currentColor;
+    letter-spacing:.02em;
+  }
+  .pallmask{
+    position:fixed; inset:0; z-index:60;
+    background:rgba(0,0,0,.26);
+    display:none;
+  }
+  .pallmask.on{display:block}
+  .pallbox{
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    z-index:61; width:min(560px,92vw); max-height:82vh; overflow-y:auto;
+    box-sizing:border-box; padding:16px 16px 18px;
+    background:#fff; border-radius:18px;
+    box-shadow:0 24px 64px rgba(0,0,0,.24);
+    display:none;
+  }
+  .pallbox.on{display:block}
+  .pallhd{display:flex; align-items:center; gap:10px}
+  .pallhd b{font-size:16px; letter-spacing:.01em}
+  .pallhd em{
+    margin-left:auto; font-style:normal; font-size:20px; line-height:1;
+    color:var(--ink3); cursor:pointer; padding:2px 6px;
+  }
+  .pallhd em:hover{color:var(--ink)}
+  .pallsub{margin-top:3px; font-size:11.5px; color:var(--ink3); letter-spacing:.02em}
+  .pasec{margin-top:14px}
+  .palab{display:block; font-size:11.5px; color:var(--ink3); letter-spacing:.03em; margin-bottom:7px}
+  .pagrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(54px,1fr)); gap:7px}
+  .pacell{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:15px; line-height:1; padding:11px 0;
+    border:none; border-radius:10px; background:#f5f5f7;
+    color:var(--ink); cursor:pointer; text-align:center;
+  }
+  .pacell:hover{background:#ececf0}
+  .pacell.on{background:var(--blue); color:#fff}
+  .pacell .nodot{
+    display:block; margin-top:4px; font-size:9.5px; letter-spacing:.02em;
+    font-family:inherit; color:var(--ink3);
+  }
+  .pacell.on .nodot{color:rgba(255,255,255,.82)}
+  .padet{margin-top:16px; border-top:1px solid #ededf0; padding-top:13px}
+  .padethd{display:flex; align-items:baseline; gap:8px}
+  .padethd b{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:22px; letter-spacing:.02em;
+  }
+  .padethd span{font-size:11.5px; color:var(--ink3)}
+  .pawrow{
+    display:flex; align-items:center; gap:9px;
+    padding:9px 10px; margin-top:7px;
+    background:#f6f6f8; border-radius:11px;
+    cursor:pointer;
+  }
+  .pawrow:hover{background:#eeeef2}
+  .pawrow .pw{font-size:14.5px; font-weight:600; min-width:64px}
+  .pawrow .pi{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--blue);
+  }
+  .pawrow .pc2{font-size:12.5px; color:var(--ink2); margin-left:auto; text-align:right}
+  .pawrow .spk{font-size:11px; color:var(--ink3); margin-left:6px}
+  .paempty{margin-top:7px; font-size:12.5px; color:var(--ink3); line-height:1.55}
+  .patip{margin-top:8px; font-size:13.5px; line-height:1.66; color:var(--ink2)}
+  @media(max-width:430px){
+    .pallbox{padding:14px 13px 16px; max-height:84vh}
+    .pagrid{grid-template-columns:repeat(auto-fill,minmax(49px,1fr)); gap:6px}
+    .pacell{font-size:14px; padding:10px 0}
+    .padethd b{font-size:20px}
   }
   .phoninfo{
     display:none;
@@ -4205,6 +4290,161 @@ function openBub(w, idx, chip){
   bubArm();
 }
 
+/* ============================================================
+ * 全部音素面板：48 个音素一屏查，不依赖当前词
+ * 数据仍来自 data/phon2.js（PHON2_PARTS[0].items）与 data/phon.js（PHON 技巧句）
+ * ============================================================ */
+const PALL = {
+  on: false,
+  sel: '',
+  VOWELS: ['iː','ɪ','e','æ','ɑː','ɒ','ɔː','ʊ','uː','ʌ','ɜː','ə','eɪ','aɪ','ɔɪ','aʊ','əʊ','ɪə','eə','ʊə'],
+  STRESS: ['ˈ','ˌ'],
+  data(){
+    const ps = window.PHON2_PARTS || [];
+    return (ps[0] && ps[0].items) ? ps[0].items : {};
+  },
+  keys(){
+    const d = this.data();
+    let ks = Object.keys(d);
+    if(!ks.length && typeof PHON !== 'undefined') ks = Object.keys(PHON);
+    return ks;
+  },
+  groups(){
+    const all = this.keys();
+    const vow = all.filter(k => this.VOWELS.includes(k));
+    const st  = all.filter(k => this.STRESS.includes(k));
+    const con = all.filter(k => !this.VOWELS.includes(k) && !this.STRESS.includes(k));
+    return [
+      { t:'元音 · ' + vow.length, ks: vow },
+      { t:'辅音 · ' + con.length, ks: con },
+      { t:'重音符号 · ' + st.length, ks: st }
+    ].filter(g => g.ks.length);
+  },
+  host(){
+    let m = document.getElementById('pAllMask');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'pAllMask'; m.className = 'pallmask';
+      m.addEventListener('click', () => PALL.close());
+      document.body.appendChild(m);
+    }
+    let h = document.getElementById('pAll');
+    if(!h){
+      h = document.createElement('div');
+      h.id = 'pAll'; h.className = 'pallbox';
+      document.body.appendChild(h);
+    }
+    return h;
+  },
+  gridHTML(){
+    return this.groups().map(g => `
+      <div class="pasec">
+        <span class="palab">${esc(g.t)}</span>
+        <div class="pagrid">${g.ks.map(k => {
+          const d = this.data()[k] || {};
+          const nCmp = (Array.isArray(d.cmp) ? d.cmp.length : 0);
+          const nSame = (Array.isArray(d.same) ? d.same.length : 0);
+          const noWord = !nCmp && !nSame && !this.STRESS.includes(k);
+          return `<button class="pacell${k === this.sel ? ' on' : ''}" data-pa="pick" data-s="${esc(k)}">${esc(k)}${noWord ? '<i class="nodot">没词</i>' : ''}</button>`;
+        }).join('')}</div>
+      </div>`).join('');
+  },
+  detHTML(){
+    const k = this.sel;
+    if(!k) return '';
+    const d = this.data()[k] || {};
+    const tip = (d.tip && String(d.tip).trim()) ? d.tip : ((typeof PHON !== 'undefined' && PHON[k]) ? PHON[k].d : '');
+    const cmp = (Array.isArray(d.cmp) ? d.cmp : []).filter(x => x && x.w);
+    const same = (Array.isArray(d.same) ? d.same : []).map(x => {
+      if(typeof x === 'string'){
+        const hit = BY_W[String(x).toLowerCase()];
+        return { w: x, cn: hit ? (hit.cn || hit.read || '') : '', ext: !hit };
+      }
+      return x;
+    }).filter(x => x && x.w);
+    let h = `<div class="padet">
+      <div class="padethd"><b>${esc(k)}</b><span>${this.VOWELS.includes(k) ? '元音' : (this.STRESS.includes(k) ? '重音符号' : '辅音')}</span></div>`;
+    if(cmp.length){
+      h += `<div class="pasec"><span class="palab">容易听错 · 一对</span>` + cmp.map(x => `
+        <div class="pawrow" data-pa="say" data-w="${esc(x.w)}">
+          <span class="pw">${esc(x.w)}</span>
+          <span class="pi">${esc(x.ipa || '')}</span>
+          <span class="pc2">${esc(x.cn || '')}</span>
+          <span class="spk">▸</span>
+        </div>`).join('') + `</div>`;
+    }
+    if(same.length){
+      h += `<div class="pasec"><span class="palab">同一个音 · 同类词</span>` + same.map(x => `
+        <div class="pawrow" data-pa="say" data-w="${esc(x.w)}">
+          <span class="pw">${esc(x.w)}</span>
+          <span class="pc2">${esc(x.cn || '')}</span>
+          <span class="spk">▸</span>
+        </div>`).join('') + `</div>`;
+    }
+    if(!cmp.length && !same.length){
+      h += `<p class="paempty">${this.STRESS.includes(k) ? '它只标重音落在哪一节，本身不发音，所以没有对比词。' : '这个音暂时没配对比词，先看下面的发音技巧和拼读规律。'}</p>`;
+    }
+    h += `<div class="pasec"><span class="palab">发音技巧</span>
+      <p class="patip">${esc(tip || '这个音还没写技巧句。')}</p></div>
+      <div class="pasec"><span class="palab">拼读规律</span>
+      <p class="patip">${esc(ruleOf(k) || '这个音还没写拼读规律。')}</p></div>
+    </div>`;
+    return h;
+  },
+  render(){
+    const h = this.host();
+    const n = this.keys().length;
+    h.innerHTML = `
+      <div class="pallhd"><b>全部 ${n} 个音素</b><em data-pa="close" title="收起">×</em></div>
+      <div class="pallsub">点一个音素看它怎么念，带「没词」的是一时还没配对比词。</div>
+      ${this.gridHTML()}
+      ${this.detHTML()}`;
+  },
+  open(){
+    this.on = true;
+    this.host();
+    if(!this.sel){
+      const ks = this.keys();
+      this.sel = ks.includes('iː') ? 'iː' : ks[0];
+    }
+    document.getElementById('pAllMask').classList.add('on');
+    this.render();
+    document.getElementById('pAll').classList.add('on');
+    const b = document.getElementById('pAll');
+    if(b) b.scrollTop = 0;
+  },
+  close(){
+    this.on = false;
+    const m = document.getElementById('pAllMask'), h = document.getElementById('pAll');
+    if(m) m.classList.remove('on');
+    if(h) h.classList.remove('on');
+  },
+  pick(sym){
+    this.sel = sym;
+    this.render();
+    const row = document.querySelector('#pAll .pacell.on');
+    if(row && row.scrollIntoView) row.scrollIntoView({block:'nearest'});
+  },
+  say(word){
+    if(!word) return;
+    PV.play(word);
+  },
+  act(a, el){
+    if(a === 'close'){ this.close(); return; }
+    if(a === 'pick'){ this.pick(el.dataset.s || ''); return; }
+    if(a === 'say'){ this.say(el.dataset.w || ''); return; }
+  }
+};
+window.VM_PALL = PALL;
+
+/* 面板挂在 body 上，不经过 #cardHost 的委托，所以单独接一层 */
+document.addEventListener('click', e => {
+  const paEl = e.target.closest('[data-pa]');
+  if(!paEl) return;
+  e.stopPropagation();
+  PALL.act(paEl.dataset.pa, paEl);
+});
+
 function bubRerender(){
   const h = document.getElementById('pBub');
   if(!h || !bub.word) return;
@@ -5344,7 +5584,10 @@ function renderCard(){
           <div class="read-main">${esc(w.read||'')}</div>
           <div class="ipa-sub">${esc(w.syl||'')}</div>
           <div class="phons">${phonHTML(w)}</div>
-          ${hasIPA ? '<div class="phtip">点音标里的字母，看它在这个词里怎么念</div>' : ''}
+          <div class="phtip">
+        <span>${hasIPA ? '点音标里的字母，看它在这个词里怎么念' : '这个词的音标暂时拆不开，可以直接看全部音素'}</span>
+        <button class="pallbtn" data-pall-open="1">全部 ${(window.PHON2_PARTS && PHON2_PARTS[0] && PHON2_PARTS[0].items) ? Object.keys(PHON2_PARTS[0].items).length : 48} 个音素 ›</button>
+      </div>
           <div class="phoninfo" id="phonInfo"></div>
         </div>
 
@@ -5594,6 +5837,11 @@ document.getElementById('cardHost').addEventListener('click', e => {
   /* 点词源构件那一行本身 ＝ 就地开编辑条（词名 <b class=jm>/<a class=mw> 已经被上面拦走做跳转了） */
   const mrRow = e.target.closest('.mrow[data-mrow]');
   if(mrRow){ e.stopPropagation(); mrowOpen(mrRow); return; }
+  /* 全部音素面板：入口 + 面板内动作（pick/say/close），到此为止不再往下走 */
+  const pallOpen = e.target.closest('[data-pall-open]');
+  if(pallOpen){ e.stopPropagation(); PALL.open(); return; }
+  const paEl = e.target.closest('[data-pa]');
+  if(paEl){ e.stopPropagation(); PALL.act(paEl.dataset.pa, paEl); return; }
   const actEl = e.target.closest('[data-act]');
   if(actEl && /^phon/.test(actEl.dataset.act)){
     e.stopPropagation();
@@ -5655,6 +5903,12 @@ document.querySelectorAll('.rbtn').forEach(b => {
 });
 
 document.addEventListener('keydown', e => {
+  /* 全部音素面板开着时，只认 Esc，别的键不翻词、不改档 */
+  if(PALL.on){
+    if(e.key === 'Escape'){ e.preventDefault(); PALL.close(); }
+    else if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA'){ e.preventDefault(); }
+    return;
+  }
   if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'){
     /* 听写输入框里回车＝判分、Esc＝退出，其余交给输入框自己 */
     if(DICT.on && e.target.id === 'dictIn'){
