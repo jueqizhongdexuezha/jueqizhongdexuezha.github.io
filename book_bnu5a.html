@@ -37,6 +37,10 @@ a.row:active{transform:scale(.985);background:#F5F5F7;}
 .ulist .row.todo{color:#C7C7CC;background:#FAFAFA;border-style:dashed;}
 .ulist .row.todo .m{color:#C7C7CC;}
 .hint{color:var(--sub);font-size:12px;line-height:1.7;margin-top:26px;}
+.vstat{display:none;align-items:center;gap:10px;margin:0 0 18px;padding:13px 16px;border:1px solid #DCE6FF;
+  border-radius:14px;background:#FAFBFF;font-size:14px;}
+.vstat b{font-weight:700;}
+.vstat .go{margin-left:auto;color:#3B6EF6;font-size:13px;text-decoration:none;}
 </style>
 </head>
 <body data-tier="free">
@@ -44,6 +48,7 @@ a.row:active{transform:scale(.985);background:#F5F5F7;}
   <p class="kicker">北师大版 五年级上册</p>
   <h1>北师大五上 · 课文点读</h1>
   <p class="sub">六个单元 · 每单元四课 · 已完成 4 课 / 共 52 句</p>
+  <div class="vstat" id="vstat"><span>本册词库 · 已收集 <b id="vn">0</b> 词</span><a class="go" id="vgo" href="lesson_bnu5a_w01.html">去查看 ›</a></div>
   <div class="units"><section class="unit open done"><button class="uhead" type="button"><span class="ut">Unit 1</span><span class="um">4 课 · 52 句</span><span class="cv">&#9660;</span></button><div class="ulist"><a class="row done" href="lesson_bnu5a_w01.html"><span class="dot"></span><span class="n">Lesson 1</span><span class="m">17 句</span></a><a class="row done" href="lesson_bnu5a_w02.html"><span class="dot"></span><span class="n">Lesson 2</span><span class="m">11 句</span></a><a class="row done" href="lesson_bnu5a_w03.html"><span class="dot"></span><span class="n">Lesson 3</span><span class="m">13 句</span></a><a class="row done" href="lesson_bnu5a_w04.html"><span class="dot"></span><span class="n">Lesson 4</span><span class="m">11 句</span></a></div></section>
     <section class="unit todo"><button class="uhead" type="button"><span class="ut">Unit 2</span><span class="um">待更新</span><span class="cv">&#9660;</span></button><div class="ulist"><div class="row todo"><span class="n">Lesson 1</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 2</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 3</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 4</span><span class="m">待更新</span></div></div></section>
     <section class="unit todo"><button class="uhead" type="button"><span class="ut">Unit 3</span><span class="um">待更新</span><span class="cv">&#9660;</span></button><div class="ulist"><div class="row todo"><span class="n">Lesson 1</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 2</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 3</span><span class="m">待更新</span></div><div class="row todo"><span class="n">Lesson 4</span><span class="m">待更新</span></div></div></section>
@@ -53,6 +58,15 @@ a.row:active{transform:scale(.985);background:#F5F5F7;}
   <p class="hint">点单元标题可展开/收起该单元的课。<br>灰色为待更新课次，会逐步补齐；课文点读长期免费。</p>
 </div>
 <script>
+try{
+  var vb = JSON.parse(localStorage.getItem('vocab_bnu5a') || '[]');
+  if (!Array.isArray(vb)) vb = [];
+  if (vb.length) {
+    document.getElementById('vn').textContent = vb.length;
+    document.getElementById('vstat').style.display = 'flex';
+    document.getElementById('vgo').textContent = '去复习 ›';
+  }
+}catch(e){}
 document.querySelectorAll('.uhead').forEach(function(h){
   h.addEventListener('click', function(){ h.parentNode.classList.toggle('open'); });
 });
