@@ -2090,6 +2090,45 @@ window.PHON2_PARTS.push({
 }
 });
 
+/* ============================================================
+ * SAME_TOPUP · 同类词补池（2026-11-28）
+ * ------------------------------------------------------------
+ * 只从「包内已有单词音频」里挑，不新增任何音频文件，
+ * 让原本只有对比词、没有同类词的音素也有词可点可听。
+ * 想撤掉：整段删除即可，原始条目不受影响。
+ * ============================================================ */
+(function(){
+  if(!window.PHON2_PARTS || !window.PHON2_PARTS[0]) return;
+  const IT = window.PHON2_PARTS[0].items;
+  const ADD = {
+    "iː": [{ w: "sheep", ipa: "/ʃiːp/", cn: "绵羊", ext: true }, { w: "seat", ipa: "/siːt/", cn: "座位", ext: true }, { w: "cheap", ipa: "/tʃiːp/", cn: "便宜的", ext: true }, { w: "mean", ipa: "/miːn/", cn: "意味着；吝啬的", ext: true }],
+    "ɒ": [{ w: "shot", ipa: "/ʃɒt/", cn: "射击；一口", ext: true }],
+    "uː": [{ w: "fool", ipa: "/fuːl/", cn: "傻瓜", ext: true }],
+    "ʊ": [{ w: "full", ipa: "/fʊl/", cn: "满的", ext: true }],
+    "ɔɪ": [{ w: "coin", ipa: "/kɔɪn/", cn: "硬币", ext: true }],
+    "aʊ": [{ w: "cow", ipa: "/kaʊ/", cn: "奶牛", ext: true }],
+    "əʊ": [{ w: "boat", ipa: "/bəʊt/", cn: "船", ext: true }, { w: "coat", ipa: "/kəʊt/", cn: "外套", ext: true }, { w: "load", ipa: "/ləʊd/", cn: "装载", ext: true }, { w: "road", ipa: "/rəʊd/", cn: "道路", ext: true }],
+    "ɪə": [{ w: "here", ipa: "/hɪə(r)/", cn: "这里", ext: true }, { w: "ear", ipa: "/ɪə(r)/", cn: "耳朵", ext: true }],
+    "eə": [{ w: "hair", ipa: "/heə(r)/", cn: "头发", ext: true }],
+    "ʊə": [{ w: "sure", ipa: "/ʃʊə(r)/", cn: "确定的", ext: true }],
+    "g": [{ w: "gold", ipa: "/ɡəʊld/", cn: "金子", ext: true }, { w: "big", ipa: "/bɪɡ/", cn: "大的", ext: true }, { w: "pig", ipa: "/pɪɡ/", cn: "猪", ext: true }],
+    "θ": [{ w: "three", ipa: "/θriː/", cn: "三", ext: true }],
+    "ð": [{ w: "they", ipa: "/ðeɪ/", cn: "他们", ext: true }],
+    "ʒ": [{ w: "pleasure", ipa: "/ˈpleʒə(r)/", cn: "愉快", ext: true }],
+    "j": [{ w: "year", ipa: "/jɪə(r)/", cn: "年", ext: true }],
+    "h": [{ w: "hair", ipa: "/heə(r)/", cn: "头发", ext: true }, { w: "here", ipa: "/hɪə(r)/", cn: "这里", ext: true }],
+    "tʃ": [{ w: "cheap", ipa: "/tʃiːp/", cn: "便宜的", ext: true }, { w: "chip", ipa: "/tʃɪp/", cn: "薯片；芯片", ext: true }, { w: "choke", ipa: "/tʃəʊk/", cn: "窒息；噎住", ext: true }],
+    "dʒ": [{ w: "jeep", ipa: "/dʒiːp/", cn: "吉普车", ext: true }, { w: "joke", ipa: "/dʒəʊk/", cn: "玩笑", ext: true }],
+    "ŋ": [{ w: "sung", ipa: "/sʌŋ/", cn: "sing 的过去分词", ext: true }],
+    "ʌ": [{ w: "sun", ipa: "/sʌn/", cn: "太阳", ext: true }, { w: "cut", ipa: "/kʌt/", cn: "切", ext: true }, { w: "sung", ipa: "/sʌŋ/", cn: "sing 的过去分词", ext: true }]
+  };
+  for(const k in ADD){
+    const d = IT[k]; if(!d) continue;
+    d.same = Array.isArray(d.same) ? d.same : [];
+    const has = w => d.same.some(x => String(typeof x === 'string' ? x : (x && x.w) || '').toLowerCase() === w.toLowerCase());
+    for(const it of ADD[k]) if(!has(it.w)) d.same.push(it);
+  }})();
+
 </script>
 <script>
 /* ============================================================
@@ -4128,7 +4167,10 @@ function ipaChip(word, ipa, mark){
   const raw = String(ipa || '').replace(/^\/+|\/+$/g, '').trim();
   if(!raw) return '';
   const m = String(mark || '');
-  const at = m ? raw.indexOf(m) : -1;
+  /* ɡ(U+0261) 与 g 只是字形不同，互相也认，避免同音标两种写法点不亮 */
+  const norm = s => s.replace(/ɡ/g, 'g');
+  let at = m ? raw.indexOf(m) : -1;
+  if(m && at < 0) at = norm(raw).indexOf(norm(m));
   if(at < 0) return `<span class="pbipa">/${esc(raw)}/</span>`;
   return `<span class="pbipa">/${esc(raw.slice(0, at))}<span class="pipa" data-pb="sayw" data-w="${esc(word)}" title="点一下听 ${esc(word)} 里的这个音">${esc(m)}</span>${esc(raw.slice(at + m.length))}/</span>`;
 }
@@ -4154,14 +4196,20 @@ function bubHTML(w, idx){
   let h = `<div class="pbh"><b>${esc(sym)}</b><em class="pbclose" data-pb="close" title="收起">×</em></div>`;
 
   const cmp = (Array.isArray(d.cmp) ? d.cmp : []).filter(x => x && x.w);
-  const same = (Array.isArray(d.same) ? d.same : []).filter(x => x && x.w);
+  const same = (Array.isArray(d.same) ? d.same : []).map(x => {
+    if(typeof x === 'string'){
+      const hit = BY_W[String(x).toLowerCase()];
+      return { w: x, cn: hit ? (hit.cn || hit.read || '') : '', ipa: hit ? (hit.ipa || '') : '', ext: !hit };
+    }
+    return x;
+  }).filter(x => x && x.w);
   if(cmp.length){
     h += `<div class="pbsec"><span class="pblab">容易听错 · 一对</span>` +
       cmp.map(x => p2row(x.w, x.cn, x.ipa, x.d || sym)).join('') + `</div>`;
   }
   if(same.length){
     h += `<div class="pbsec"><span class="pblab">同一个音 · 同类词</span>` +
-      same.map(x => p2row(x.w, x.cn)).join('') + `</div>`;
+      same.map(x => p2row(x.w, x.cn, x.ipa, x.d || sym)).join('') + `</div>`;
   }
   /* 三种空态：只有其一、或两样都没有，都留一句人话，不留白 */
   if(!cmp.length && !same.length){
@@ -4358,7 +4406,7 @@ const PALL = {
     const same = (Array.isArray(d.same) ? d.same : []).map(x => {
       if(typeof x === 'string'){
         const hit = BY_W[String(x).toLowerCase()];
-        return { w: x, cn: hit ? (hit.cn || hit.read || '') : '', ext: !hit };
+        return { w: x, cn: hit ? (hit.cn || hit.read || '') : '', ipa: hit ? (hit.ipa || '') : '', ext: !hit };
       }
       return x;
     }).filter(x => x && x.w);
@@ -4377,6 +4425,7 @@ const PALL = {
       h += `<div class="pasec"><span class="palab">同一个音 · 同类词</span>` + same.map(x => `
         <div class="pawrow" data-pa="say" data-w="${esc(x.w)}">
           <span class="pw">${esc(x.w)}</span>
+          <span class="pi">${esc(x.ipa || '')}</span>
           <span class="pc2">${esc(x.cn || '')}</span>
           <span class="spk">▸</span>
         </div>`).join('') + `</div>`;
