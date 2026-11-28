@@ -538,7 +538,8 @@ function renderGroupBar(){
   };
   box.appendChild(mk(-1,'全部'));
   gl.forEach((g,i)=>{
-    box.appendChild(mk(i,(g[0]+1)+'-'+(g[g.length-1]+1)));
+    const a=g[0]+1, b=g[g.length-1]+1;
+    box.appendChild(mk(i, a===b ? String(a) : (a+'-'+b)));
   });
   const sel=box.querySelector('.chip.sel');
   if(sel) box.scrollLeft=Math.max(0,sel.offsetLeft-box.clientWidth/2+sel.offsetWidth/2);
@@ -1031,7 +1032,11 @@ WEEKS.forEach((w,wi)=>{
       enDelegate.addEventListener('click',e=>{
         const tw=e.target&&e.target.closest?e.target.closest('.w'):null;
         if(wHeld){e.stopPropagation();return;}       /* 长按已入库：吞掉这次 click，不弹词卡 */
-        if(tw){e.stopPropagation();showWord(gid,tw.getAttribute('data-w'),tw.textContent);}
+        if(tw){
+          e.stopPropagation();
+          if(!(S.curGid===gid&&!S.audio.paused)) playWhole(gid);  /* 整条直读：点任一单词即朗读整句 */
+          showWord(gid,tw.getAttribute('data-w'),tw.textContent);
+        }
       });
     }
     card.querySelectorAll('.segplay').forEach(el=>{
@@ -1060,6 +1065,7 @@ WEEKS.forEach((w,wi)=>{
         if(tw){
           e.stopPropagation();
           if(Date.now()<wordHoldMark) return;          /* 刚长按入库：不弹词卡 */
+          if(!(S.curGid===gid&&!S.audio.paused)) playWhole(gid);  /* 整条直读：点任一单词即朗读整句 */
           showWord(gid,tw.getAttribute('data-w'),tw.textContent);
           return;
         }
