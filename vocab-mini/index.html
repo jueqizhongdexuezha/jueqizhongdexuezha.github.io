@@ -1,0 +1,5141 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>单词解释器</title>
+<style>
+  :root{
+    --bg:#f5f5f7;
+    --card:#ffffff;
+    --ink:#1d1d1f;
+    --ink2:#6e6e73;
+    --ink3:#a1a1a6;
+    --line:#e8e8ed;
+    --blue:#0071e3;
+    --root:#1d1d1f;
+    --mem:#b25000;
+    --mem-bg:#fff4e8;
+    --radius:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* ---------- 顶栏 ---------- */
+  header{
+    flex:0 0 auto;
+    padding:14px 20px 10px;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    background:rgba(245,245,247,.86);
+    backdrop-filter:saturate(180%) blur(20px);
+    border-bottom:1px solid var(--line);
+  }
+  .search{
+    flex:1;
+    position:relative;
+  }
+  .search input{
+    width:100%;
+    height:38px;
+    padding:0 14px 0 36px;
+    border:none;
+    border-radius:10px;
+    background:#e8e8ed;
+    font-size:15px;
+    color:var(--ink);
+    outline:none;
+    font-family:inherit;
+  }
+  .search input:focus{background:#fff;box-shadow:0 0 0 3px rgba(0,113,227,.18)}
+  .search svg{position:absolute;left:11px;top:11px;opacity:.42}
+  .iconbtn{
+    height:38px;
+    min-width:38px;
+    padding:0 13px;
+    border:none;
+    border-radius:10px;
+    background:#e8e8ed;
+    color:var(--ink);
+    font-size:14px;
+    font-family:inherit;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    transition:background .15s;
+    white-space:nowrap;
+  }
+  .iconbtn:hover{background:#dcdce1}
+  .iconbtn.on{background:var(--ink);color:#fff}
+
+  /* ---------- 主体 ---------- */
+  main{flex:1;display:flex;min-height:0}
+
+  #stage{
+    flex:1;
+    min-width:0;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:28px 20px 12px;
+  }
+
+  .card{
+    width:100%;
+    max-width:620px;
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:30px 34px 26px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05),0 8px 28px rgba(0,0,0,.04);
+  }
+
+  .word{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+  .word h1{
+    font-size:40px;
+    line-height:1.1;
+    margin:0;
+    font-weight:600;
+    letter-spacing:-.5px;
+  }
+  .pos{color:var(--ink3);font-size:15px;font-style:italic}
+  .cn{
+    margin-top:10px;
+    font-size:19px;
+    color:var(--ink2);
+    font-weight:400;
+  }
+
+  /* ---------- 词库入口 ---------- */
+  /* 词库：背词时自己收进来的词，独立一格，压在发音条上面。
+     与发音条同一套四列网格，落在第 4 列＝正好压在「复读×2」头上；
+     按钮本身与 .atog 同一套视觉（同高、同字号、同底色、同圆角）。 */
+  .librow{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+    margin-top:12px;
+  }
+  .libbtn{
+    grid-column:4;
+    display:inline-flex;align-items:center;justify-content:center;
+    gap:5px;
+    height:32px;min-width:0;padding:0 6px;
+    border:none;border-radius:16px;
+    background:#f0f0f3;color:var(--ink);
+    font-family:inherit;font-size:13.5px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .libbtn:hover{background:#e4e4e9;color:var(--ink)}
+  .libbtn .libn{font-size:11.5px;color:var(--blue);font-variant-numeric:tabular-nums;flex:0 0 auto}
+  .libbtn.libzero .libn{color:var(--ink3)}
+  .librow + .audio{margin-top:8px}
+  /* 词库面板里的清单：一行一个词，点一行翻过去，右边一枚移出 */
+  .liblist{max-height:52vh;overflow-y:auto;border-top:1px solid var(--line)}
+  .libitem{display:flex;align-items:baseline;gap:9px;padding:9px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+  .libitem:hover{background:#fafafc}
+  .libitem .lw{font-size:15px;font-weight:600;letter-spacing:.01em}
+  .libitem .lc{flex:1;font-size:12.5px;color:var(--ink3);line-height:1.5}
+  .libitem .ldel{
+    font-family:inherit;font-size:11px;line-height:18px;padding:0 8px;
+    border-radius:9px;border:1px solid #e6e6ea;background:#fff;color:var(--ink3);cursor:pointer;
+  }
+  .libitem .ldel:hover{border-color:#e0b4b4;color:#c0392b}
+  .libempty{font-size:12.5px;color:var(--ink3);padding:16px 2px;line-height:1.7}
+  /* ===== P3 词库面板：点读 / 复制 / 导入词表 =====
+     入口一律用文字层级，不加图标按钮、不加边框卡片：
+     顶部一行「复制整库 · 全部导入」，每行词尾「导入 / 复制 / 移出」，
+     已进词表的同一位置退成灰字，点不动，不会重复导入。 */
+  .libops{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 0 10px}
+  .libops .libtip{flex:1 1 auto;min-width:0;font-size:11.5px;line-height:1.55;color:var(--ink3)}
+  .libops .libacts{flex:0 0 auto;display:flex;gap:14px;white-space:nowrap}
+  .lact{
+    font-family:inherit;font-size:11.5px;line-height:1.5;padding:0;
+    border:0;background:none;color:var(--blue);cursor:pointer;
+    -webkit-appearance:none;appearance:none;
+  }
+  .lact:hover{text-decoration:underline}
+  .lact.done{color:var(--ink3);cursor:default}
+  .lact.done:hover{text-decoration:none}
+  .libitem .lw{flex:0 0 auto}
+  .libitem .lc{flex:1 1 auto;min-width:0;word-break:break-word}
+  .libitem .lops{flex:0 0 auto;display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+  .libitem .lops .lact{font-size:11px;color:var(--ink3)}
+  .libitem .lops .lact:hover{color:var(--blue);text-decoration:underline}
+  .libitem .lops .lact.done{color:#bfbfc7}
+  .libitem .lops .lact.done:hover{color:#bfbfc7;text-decoration:none}
+  .libcopy{
+    display:block;width:100%;box-sizing:border-box;height:84px;margin:0 0 9px;
+    font-family:inherit;font-size:12px;line-height:1.5;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;padding:8px 9px;
+    background:#fbfbfd;resize:none;
+  }
+  @media (max-width:420px){
+    .libitem{gap:7px;padding:8px 1px}
+    .libitem .lops{gap:7px}
+    .libitem .lops .lact{font-size:10.5px}
+    .libops{gap:8px}
+    .libops .libacts{gap:10px}
+  }
+
+  /* ---------- 发音条 ---------- */
+  /* 发音条：一排四格，等宽等高，永远不折行 */
+  .audio{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+    margin-top:14px;
+  }
+  .abtn,.atog{
+    display:inline-flex;align-items:center;justify-content:center;
+    gap:5px;
+    height:32px;min-width:0;padding:0 6px;
+    border:none;border-radius:16px;
+    font-family:inherit;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .abtn{background:#f0f0f3;color:var(--ink);font-size:13.5px}
+  .abtn:hover{background:#e4e4e9}
+  .abtn.on{background:var(--blue);color:#fff}
+  .abtn svg{width:12px;height:12px;flex:0 0 auto}
+  /* 开关那格（复读）跟前面三格同底同字号同高亮色：一排四格是一家 */
+  .atog{background:#f0f0f3;color:var(--ink);font-size:13.5px}
+  .atog:hover{background:#e4e4e9;color:var(--ink)}
+  .atog.on{background:var(--blue);color:#fff}
+  /* 语速：从那一排挪到词头右上角，灰字小胶囊 */
+  .ratecap{
+    margin-left:auto;align-self:center;
+    height:24px;padding:0 10px;
+    border:none;border-radius:12px;
+    background:#f0f0f3;color:var(--ink3);
+    font-family:inherit;font-size:11px;line-height:24px;
+    letter-spacing:.02em;white-space:nowrap;
+    cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .ratecap:hover{background:#e4e4e9;color:var(--ink2)}
+  .ratecap.on{background:#e8e8ed;color:var(--ink)}
+  /* 音色旋钮：跟语速并排，点一下换一档（男女轮换 / 女声 / 男声） */
+  .ratecap.vcap{margin-left:0;padding:0 8px}
+  .word h1.play{cursor:pointer;-webkit-user-select:none;user-select:none}
+  .word h1.play:active{opacity:.55}
+  .word h1.play.on{color:var(--blue)}
+  .egline{cursor:pointer;transition:color .15s}
+  .egline:hover{color:var(--ink)}
+  .egline.on{color:var(--blue)}
+  /* 例句常显：紧贴发音条下方，整行可点听；左侧小喇叭＝点了会念 */
+  .egtop{
+    display:flex;
+    align-items:flex-start;
+    gap:7px;
+    margin:8px 0 0;
+    padding:7px 13px;
+    min-height:32px;
+    box-sizing:border-box;
+    border-radius:10px;
+    background:#f7f7fa;
+    font-size:14.5px;
+    line-height:1.6;
+    color:var(--ink2);
+    transition:background .15s,color .15s;
+  }
+  .egtop .egicon{
+    flex:0 0 auto;
+    width:13px;height:13px;
+    margin-top:4px;
+    color:var(--ink3);
+  }
+  .egtop .egicon svg{width:13px;height:13px;display:block}
+  .egtop .egt{flex:1 1 auto;min-width:0}
+  .egtop:hover{background:#f0f0f5;color:var(--ink)}
+  .egtop:hover .egicon{color:var(--ink2)}
+  .egtop.on{background:#eef4ff;color:var(--blue)}
+  .egtop.on .egicon{color:var(--blue)}
+
+  /* ---------- 听写 ---------- */
+  .dict{
+    margin-top:16px;
+    padding:15px 17px 13px;
+    background:#f5f5f7;
+    border-radius:14px;
+  }
+  .dhint{
+    display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    font-size:12.5px;color:var(--ink2);
+  }
+  .dhint .dnum{color:var(--ink3);font-size:12px;white-space:nowrap}
+  .dict input{
+    display:block;width:100%;height:48px;margin-top:9px;
+    padding:0 13px;border:1px solid #dcdce1;border-radius:11px;
+    background:#fff;outline:none;color:var(--ink);
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:23px;letter-spacing:2px;
+  }
+  .dict input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,113,227,.14)}
+  .dict input::placeholder{letter-spacing:0;font-size:14px;font-family:inherit;color:var(--ink3)}
+  .drow{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+  .drow button{
+    font-family:inherit;font-size:12.5px;padding:6px 14px;
+    border-radius:20px;border:1px solid #dcdce1;background:#fff;
+    color:var(--ink2);cursor:pointer;transition:border-color .15s,color .15s;
+  }
+  .drow button:hover{border-color:var(--ink3);color:var(--ink)}
+  .drow button.pri{background:var(--ink);border-color:var(--ink);color:#fff}
+  .dres{margin-top:4px}
+  .dlab{
+    font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink3);margin-top:11px;
+  }
+  .dline{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:21px;line-height:1.6;letter-spacing:2px;color:var(--ink);
+    word-break:break-all;
+  }
+  .c-ok{color:var(--ink)}
+  .c-bad{color:#d70015;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+  .c-miss{color:#d70015;border-bottom:2px dotted #d70015}
+  .c-extra{color:#d70015;text-decoration:line-through;opacity:.7}
+  .dverdict{margin-top:10px;font-size:13.5px;font-weight:600}
+  .dverdict.good{color:#1a7f37}
+  .dverdict.bad{color:#d70015}
+  .dtip{margin-top:5px;font-size:12.5px;line-height:1.75;color:var(--ink2)}
+  .dwarn{margin-top:9px;font-size:12.5px;color:var(--mem)}
+  /* 听写时把泄底的块藏起来：释义留着，例句/读音/结构/记法全藏 */
+  .card.dicting .egtop,
+  .card.dicting .blocks{display:none}
+  .card.dicting .word h1{letter-spacing:6px;color:var(--ink3)}
+
+  .blocks{margin-top:12px;display:flex;flex-direction:column;gap:0}
+  .block{
+    padding:9px 0;
+    border-top:1px solid var(--line);
+  }
+  .block:first-child{border-top:none;padding-top:2px}
+  .blabel{
+    font-size:11px;
+    letter-spacing:.12em;
+    color:var(--ink3);
+    text-transform:uppercase;
+    margin-bottom:4px;
+    font-weight:600;
+  }
+  /* 结构块标题行里的小图例：把 根/记/我 的意思就地讲清，不再单占一行 */
+  .blg{
+    margin-left:9px;
+    font-size:10.5px;
+    font-weight:400;
+    letter-spacing:.02em;
+    text-transform:none;
+    color:var(--ink3);
+  }
+  .blg .tag{margin-right:3px}
+  .blg i{font-style:normal;color:var(--ink3);opacity:.45;margin:0 6px}
+  .ipa{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:16px;
+    color:var(--ink2);
+  }
+  .syl{
+    font-size:22px;
+    font-weight:500;
+    letter-spacing:.6px;
+    margin:6px 0 4px;
+  }
+  .read-main{
+    font-size:20px;
+    font-weight:500;
+    line-height:1.42;
+    letter-spacing:.2px;
+  }
+  .ipa-sub{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:13px;
+    color:var(--ink3);
+    margin-top:3px;
+  }
+  .read{font-size:15px;color:var(--ink2)}
+
+  /* ---------- 音素（逐个可点） ---------- */
+  .phons{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .pc{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:15px;line-height:1;
+    padding:5px 7px;border-radius:7px;
+    background:#f0f0f3;color:var(--ink);
+    cursor:pointer;user-select:none;
+    /* 虚线下划线＝这里点得动（点开看这个音在本词里怎么念） */
+    text-decoration:underline dashed rgba(0,0,0,.26);
+    text-decoration-thickness:1px;
+    text-underline-offset:4px;
+    transition:background .12s,color .12s;
+  }
+  .pc:hover{background:#e4e4e9;text-decoration-color:rgba(0,0,0,.45)}
+  .pc.on{background:var(--blue);color:#fff;text-decoration:none}
+  .pc.st{color:var(--mem);font-weight:700}
+  .pc.st.on{color:#fff}
+  .pc.empty{background:none;padding-left:0;font-family:inherit;font-size:13px;color:var(--ink3);cursor:pointer;text-decoration:none}
+  .phtip{
+    margin-top:5px;
+    font-size:12.5px;
+    line-height:1.55;
+    font-weight:500;
+    color:var(--ink2);
+    letter-spacing:.01em;
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  /* 复习：一级按钮 + 二级选项（只看到期 / 全部音素表） */
+  .revwrap{position:relative;flex:0 0 auto}
+  .revmenu{
+    display:none;position:fixed;top:0;left:0;z-index:60;
+    min-width:196px;max-width:calc(100vw - 16px);padding:6px;
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 10px 28px rgba(0,0,0,.14);
+  }
+  .revmenu.on{display:block}
+  .revmenu button{
+    display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;
+    font-family:inherit;text-align:left;cursor:pointer;
+    background:none;border:none;border-radius:8px;padding:7px 9px;
+    color:var(--ink);
+  }
+  .revmenu button:hover{background:#f0f4fb}
+  .revmenu button b{font-size:13.5px;font-weight:600}
+  .revmenu button small{font-size:11px;color:var(--ink3)}
+  .revmenu button.on b{color:var(--blue)}
+  .revmenu button.on b::before{content:'✓ '}
+  /* 对比词后面：收进词库 */
+  .pbkeep{
+    font-style:normal;flex:0 0 auto;align-self:center;
+    font-size:11px;color:var(--blue);
+    background:#fff;border:1px solid #cfe0f8;border-radius:7px;
+    padding:1px 7px;white-space:nowrap;cursor:pointer;
+  }
+  .pbkeep:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .pbkeep.done{color:var(--ink3);background:#f2f2f5;border-color:#e6e6ea;cursor:default}
+  .pbkeep.done:hover{background:#f2f2f5;color:var(--ink3);border-color:#e6e6ea}
+  /* 轻提示 */
+  .vmtoast{
+    position:fixed;left:50%;bottom:86px;transform:translate(-50%,10px);
+    z-index:9999;max-width:78vw;
+    font-size:12.5px;line-height:1.5;color:#fff;
+    background:rgba(30,30,34,.9);border-radius:9px;padding:7px 12px;
+    opacity:0;pointer-events:none;transition:opacity .18s, transform .18s;
+  }
+  .vmtoast.on{opacity:1;transform:translate(-50%,0)}
+  .pallmask{
+    position:fixed; inset:0; z-index:60;
+    background:rgba(0,0,0,.26);
+    display:none;
+  }
+  .pallmask.on{display:block}
+  .pallbox{
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    z-index:61; width:min(560px,92vw); max-height:82vh; overflow-y:auto;
+    box-sizing:border-box; padding:16px 16px 18px;
+    background:#fff; border-radius:18px;
+    box-shadow:0 24px 64px rgba(0,0,0,.24);
+    display:none;
+  }
+  .pallbox.on{display:block}
+  .pquizbtn{
+    display:block; width:100%; box-sizing:border-box;
+    margin-top:9px; padding:9px 0;
+    font-family:inherit; font-size:13px;
+    color:var(--blue); background:#f2f7ff;
+    border:1px solid #dbe8fb; border-radius:11px;
+    cursor:pointer; letter-spacing:.01em;
+  }
+  .pquizbtn:hover{background:#e8f1ff}
+  .qzk{margin-top:14px; font-size:15px; line-height:1.6}
+  .qzk b{font-family:"SF Mono",ui-monospace,Consolas,monospace; font-size:17px; color:var(--blue)}
+  .qzrow{display:flex; gap:10px; margin-top:12px}
+  .qzplay{
+    flex:1; padding:15px 0; font-family:inherit; font-size:14.5px;
+    border:1px solid #e3e3e9; border-radius:13px; background:#f6f6f8;
+    color:var(--ink); cursor:pointer;
+  }
+  .qzplay:hover{background:#eeeef2}
+  .qzplay.on{border-color:var(--blue); color:var(--blue); background:#eef6ff}
+  .qzpick{display:flex; gap:10px; margin-top:10px}
+  .qzpick button{
+    flex:1; padding:13px 0; font-family:inherit; font-size:14.5px;
+    color:#fff; background:var(--blue); border:none; border-radius:13px; cursor:pointer;
+  }
+  .qzpick button:disabled{opacity:.42}
+  .qzfb{margin-top:14px; padding:12px 13px; background:#f6f6f8; border-radius:12px}
+  .qzline{display:flex; align-items:baseline; gap:8px; font-size:14px; padding:4px 0}
+  .qzline em{font-style:normal; font-size:11.5px; color:var(--ink3); width:14px}
+  .qzline b{font-weight:600}
+  .qzline i{font-style:normal; font-family:"SF Mono",ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--ink3)}
+  .qzline u{text-decoration:none; margin-left:auto; font-size:11.5px; color:var(--blue)}
+  .qzline.hit b{color:var(--blue)}
+  .qzfoot{margin-top:12px; text-align:center}
+  .qzfoot em{
+    font-style:normal; font-size:12px; color:var(--ink3);
+    border-bottom:1px dotted currentColor; cursor:pointer; padding-bottom:1px;
+  }
+  .pacell.weak{position:relative; box-shadow:inset 0 0 0 1px #f1c4be}
+  .pacell.weak::after{
+    content:''; position:absolute; top:5px; right:6px;
+    width:5px; height:5px; border-radius:50%; background:#e05a4a;
+  }
+  .pacell.on.weak::after{background:#fff}
+  .qzres{margin-top:8px; font-size:13px}
+  .qzres.ok{color:#1a8f4a}
+  .qzres.no{color:#c0392b}
+  .qzend{margin-top:16px; font-size:16px; text-align:center}
+  .qzend b{font-size:24px; color:var(--blue); margin:0 4px}
+  .qzhint{margin-top:9px; font-size:13px; color:var(--ink2); text-align:center; line-height:1.6}
+  @media(max-width:430px){
+    .qzplay, .qzpick button{font-size:14px; padding:13px 0}
+    .qzk{font-size:14.5px}
+  }
+  .pallhd{display:flex; align-items:center; gap:10px}
+  .pallhd b{font-size:16px; letter-spacing:.01em}
+  .pallhd em{
+    margin-left:auto; font-style:normal; font-size:20px; line-height:1;
+    color:var(--ink3); cursor:pointer; padding:2px 6px;
+  }
+  .pallhd em:hover{color:var(--ink)}
+  .pallsub{margin-top:3px; font-size:11.5px; color:var(--ink3); letter-spacing:.02em}
+  /* 原诉求⑦：PALL 副标题提亮到正文同色级、字重+1，一行内不换行 */
+  .pallsub.lit{
+    font-size:12px; color:var(--ink); font-weight:500; letter-spacing:.01em;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  /* 发音技巧 / 拼读规律 的就地手改（原气泡「改」入口搬到这里，气泡本身只留三层） */
+  .palab .pedit{
+    display:inline-block; margin-left:8px; font-style:normal;
+    font-size:11.5px; color:var(--blue); cursor:pointer;
+  }
+  .palab .pedit:hover{text-decoration:underline}
+  .paedit{
+    display:block; width:100%; box-sizing:border-box;
+    padding:8px 10px; border:1px solid #ddd; border-radius:9px;
+    font-family:inherit; font-size:12.5px; line-height:1.6;
+    color:var(--ink); background:#fff; resize:vertical;
+  }
+  .paedit:focus{outline:none; border-color:var(--blue)}
+  .pasec{margin-top:14px}
+  .palab{display:block; font-size:11.5px; color:var(--ink3); letter-spacing:.03em; margin-bottom:7px}
+  .pagrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(54px,1fr)); gap:7px}
+  .pacell{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:15px; line-height:1; padding:11px 0;
+    border:none; border-radius:10px; background:#f5f5f7;
+    color:var(--ink); cursor:pointer; text-align:center;
+  }
+  .pacell:hover{background:#ececf0}
+  .pacell.on{background:var(--blue); color:#fff}
+  .pacell .nodot{
+    display:block; margin-top:4px; font-size:9.5px; letter-spacing:.02em;
+    font-family:inherit; color:var(--ink3);
+  }
+  .pacell.on .nodot{color:rgba(255,255,255,.82)}
+  .padet{margin-top:16px; border-top:1px solid #ededf0; padding-top:13px}
+  .padethd{display:flex; align-items:baseline; gap:8px}
+  .padethd b{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:22px; letter-spacing:.02em;
+  }
+  .padethd span{font-size:11.5px; color:var(--ink3)}
+  .pawrow{
+    display:flex; align-items:center; gap:9px;
+    padding:9px 10px; margin-top:7px;
+    background:#f6f6f8; border-radius:11px;
+    cursor:pointer;
+  }
+  .pawrow:hover{background:#eeeef2}
+  .pawrow .pw{font-size:14.5px; font-weight:600; min-width:64px}
+  .pawrow .pi{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink3);
+  }
+  .pawrow .pi .phhit{color:var(--blue); font-style:normal; font-weight:700}
+  .pawrow .pc2{font-size:12.5px; color:var(--ink2); margin-left:auto; text-align:right}
+  .pawrow .spk{font-size:11px; color:var(--ink3); margin-left:6px}
+  .paempty{margin-top:7px; font-size:12.5px; color:var(--ink3); line-height:1.55}
+  .patip{margin-top:8px; font-size:13.5px; line-height:1.66; color:var(--ink2)}
+  @media(max-width:430px){
+    .pallbox{padding:14px 13px 16px; max-height:84vh}
+    .pagrid{grid-template-columns:repeat(auto-fill,minmax(49px,1fr)); gap:6px}
+    .pacell{font-size:14px; padding:10px 0}
+    .padethd b{font-size:20px}
+  }
+  .phoninfo{
+    display:none;
+    margin-top:10px;
+    padding:11px 13px;
+    background:#f5f5f7;
+    border-radius:10px;
+    font-size:14px;
+    line-height:1.6;
+  }
+  .phoninfo.open{display:block}
+  .phoninfo b{font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:15px;margin-right:6px}
+  .phoninfo span{display:block;margin-top:5px;font-size:13px;color:var(--ink2)}
+  .pedit{
+    float:right;font-style:normal;font-size:12px;cursor:pointer;
+    color:var(--ink3);border-bottom:1px dotted currentColor;
+  }
+  .pedit:hover{color:var(--blue)}
+  .phoninfo textarea{
+    display:block;width:100%;box-sizing:border-box;margin-top:7px;
+    padding:9px 11px;border:1px solid #ddd;border-radius:9px;
+    font-family:inherit;font-size:13.5px;line-height:1.65;
+    color:var(--ink);background:#fff;resize:vertical;
+  }
+  .phoninfo textarea:focus{outline:none;border-color:var(--blue)}
+  .prow{display:flex;gap:7px;margin-top:8px}
+  .prow button{
+    font-family:inherit;font-size:12.5px;padding:5px 13px;
+    border-radius:20px;border:1px solid #ddd;background:#fff;
+    color:var(--ink2);cursor:pointer;
+  }
+  .prow button:hover{border-color:var(--ink3)}
+  .prow button.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+  .tag.w{background:#e7f0ff;color:var(--blue)}
+
+  /* ===== 音素两级气泡（阶段1） =====
+     浮在音标上方，不顶高卡片；点外面/翻词/8 秒自己收 */
+  .pbub{
+    display:none;position:fixed;z-index:60;
+    /* P1.5：局部小气泡——宽度随内容收，窄屏最多占 62vw，绝不铺满 */
+    width:max-content;
+    max-width:clamp(180px,62vw,250px);
+    min-width:204px;
+    box-sizing:border-box;
+    /* 窄屏/矮屏：整体不许超出视口；真放不下时加 .tight 让内容自己滚（箭头同时收掉） */
+    max-height:calc(100vh - 24px);
+    padding:9px 11px 9px;
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.15);
+    font-size:12.5px;line-height:1.45;color:var(--ink);
+  }
+  .pbub.tight{overflow-y:auto;overscroll-behavior:contain}
+  .pbub.tight::after{display:none}
+  .pbub.on{display:block}
+  .pbub::after{
+    content:'';position:absolute;left:var(--ax,40px);bottom:-6.5px;
+    width:11px;height:11px;margin-left:-5.5px;background:#fff;
+    border:1px solid var(--line);border-top:0;border-left:0;
+    transform:rotate(45deg);
+  }
+  .pbub.above::after{
+    bottom:auto;top:-6.5px;
+    border:1px solid var(--line);border-bottom:0;border-right:0;
+  }
+  .pbh{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .pbh b{font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:16px}
+  .pbclose{
+    margin-left:auto;font-style:normal;font-size:17px;line-height:1;
+    color:var(--ink3);cursor:pointer;padding:0 3px;
+  }
+  .pbclose:hover{color:var(--ink)}
+  /* ===== P1.5 气泡三层：符号+一句结论 / 2–3 个对比词点听 / 一行极轻小注 ===== */
+  .pbhd{display:flex;align-items:baseline;gap:6px;padding-right:15px}
+  .pbhd b{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:17px;line-height:1.2;flex:none;
+  }
+  .pbline{flex:1 1 auto;min-width:0;font-size:12.5px;line-height:1.4;color:var(--ink)}
+  .pbub .pbclose{position:absolute;top:5px;right:6px;margin:0;font-size:15px}
+  .pbws{margin-top:6px;display:flex;flex-direction:column;gap:2px}
+  .pbwr{display:flex;align-items:center;gap:1px}
+  .pbw{
+    flex:1 1 auto;min-width:0;
+    display:flex;align-items:baseline;gap:5px;
+    padding:3px 6px;border:0;border-radius:7px;background:#f7f7f9;
+    font-family:inherit;font-size:12.5px;line-height:1.35;text-align:left;
+    cursor:pointer;color:var(--ink);
+  }
+  .pbw:hover{background:#f0f4fb}
+  .pbw i{font-style:normal;font-weight:600;white-space:nowrap}
+  .pbw u{text-decoration:none;color:var(--ink2);font-size:11.5px;white-space:nowrap}
+  .pbw s{
+    text-decoration:none;margin-left:auto;padding-left:4px;
+    font-size:10.5px;color:var(--ink3);white-space:nowrap;
+  }
+  .pbw .pbipa{font-size:11px}
+  .pbadd{
+    flex:none;font-style:normal;font-size:14px;line-height:1;
+    color:var(--ink3);opacity:.5;cursor:pointer;padding:3px 5px;border-radius:6px;
+  }
+  .pbadd:hover{opacity:1;color:var(--blue)}
+  .pbn{
+    margin-top:6px;font-size:10.5px;line-height:1.35;color:var(--ink3);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  /* ===== P2-① 拆解件「本身就是个词」：极轻标记 + 就地一行助记 ===== */
+  .mph .mtg{
+    font-style:normal;font-size:10px;line-height:1;
+    vertical-align:super;letter-spacing:0;
+    color:#5b7091;background:#eef3fb;border-radius:999px;
+    padding:2px 4px;margin-left:3px;
+    cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+  }
+  .mph .mtg:hover{background:#e3ecfa;color:#1d4f8f}
+  .mph .mtg.on{background:#dde8fb;color:#17427c}
+  .mph .mtgnote{
+    display:block;margin:3px 0 1px 23px;
+    font-size:11.5px;line-height:1.45;color:var(--ink2);
+  }
+  .mph .mtgnote b{font-weight:600;color:var(--ink)}
+
+  /* ===== P2-② 一颗胶囊打通例句／单词表／词库三处 ===== */
+  .pill{
+    display:inline-block;font-family:inherit;font-size:15px;font-weight:500;
+    line-height:1.2;letter-spacing:normal;vertical-align:baseline;
+    padding:3px 8px;border:0;border-radius:999px;
+    background:#eaf2ff;color:#1f5fae;
+    -webkit-appearance:none;appearance:none;
+    cursor:pointer;white-space:nowrap;text-align:left;
+    -webkit-tap-highlight-color:transparent;transition:background .12s;
+  }
+  .pill:hover{background:#dfeaff;color:#164a8a}
+  .pill.on{background:#d6e5ff;color:#0f3f78}
+  .egtop:hover .pill,.egtop.on .pill{color:#1f5fae}
+  .egtop:hover .pill:hover,.egtop.on .pill:hover{color:#164a8a}
+  .row .pill{flex:none}
+  .libitem .pill{flex:none}
+
+  /* 胶囊小卡：与音标气泡同一套皮（白底、12 圆角、同一个尖角、同一档阴影） */
+  #pCard{
+    display:none;position:fixed;z-index:62;
+    width:max-content;min-width:200px;max-width:260px;box-sizing:border-box;
+    padding:9px 11px 10px;
+    background:#fff;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 12px 30px rgba(0,0,0,.15);
+    font-size:12.5px;line-height:1.45;color:var(--ink);
+  }
+  #pCard.on{display:block}
+  #pCard::after{
+    content:'';position:absolute;left:var(--ax,40px);bottom:-6.5px;
+    width:11px;height:11px;margin-left:-5.5px;background:#fff;
+    border:1px solid var(--line);border-top:0;border-left:0;
+    transform:rotate(45deg);
+  }
+  #pCard.above::after{
+    bottom:auto;top:-6.5px;
+    border:1px solid var(--line);border-bottom:0;border-right:0;
+  }
+  .pchd{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;padding-right:14px}
+  .pchd b{font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:16px;font-weight:600}
+  .pcipa{font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink2)}
+  .pcmean{margin-top:3px;font-size:12.5px;color:var(--ink)}
+  .pcrow{display:flex;gap:6px;margin-top:8px}
+  .pcb{
+    flex:1 1 0;min-width:0;padding:5px 0;border:0;border-radius:8px;
+    background:#f4f6fa;font-family:inherit;font-size:12px;color:var(--ink);
+    cursor:pointer;white-space:nowrap;
+  }
+  .pcb:hover{background:#e9eef8}
+  .pcb.pri{color:var(--blue)}
+  .pcb.mute{background:#fbf1f1;color:#b4332f}
+  /* 小卡里只加一行文字动作：复制这个词。不加边框、不加图标 */
+  .pcmini{
+    display:inline-block;margin-top:7px;padding:0;border:0;background:none;
+    font-family:inherit;font-size:11.5px;color:var(--ink3);cursor:pointer;
+  }
+  .pcmini:hover{color:var(--blue);text-decoration:underline}
+  .pcmini.done{color:var(--blue);text-decoration:none}
+  .pcsel{
+    display:block;width:100%;box-sizing:border-box;margin-top:7px;padding:4px 6px;
+    border:0;border-radius:6px;background:#f4f6fa;
+    font-family:inherit;font-size:11.5px;color:var(--ink);
+  }
+  .pbsec{margin-top:7px}
+  .pblab{
+    display:block;font-size:11.5px;letter-spacing:.03em;color:var(--ink3);
+    margin-bottom:3px;
+  }
+  .pblab .pedit{float:none;margin-left:7px;font-size:11.5px}
+  .pbmark{
+    font-style:normal;font-size:10.5px;color:var(--mem);
+    background:var(--mem-bg);border-radius:5px;padding:1px 5px;margin-left:6px;
+  }
+  .pbrow{
+    display:flex;align-items:center;gap:6px;width:100%;
+    font-size:13.5px;text-align:left;
+    padding:4px 7px;margin-bottom:3px;
+    background:#f7f7f9;border:1px solid transparent;border-radius:8px;
+    color:var(--ink);
+  }
+  .pbrow:hover{background:#f0f4fb;border-color:#d8e5f8}
+  .pbrow.on{background:#e7f0ff;border-color:#c8ddf8}
+  .pbsay{
+    flex:1 1 auto;min-width:0;
+    display:flex;align-items:baseline;gap:7px;
+    font-family:inherit;font-size:13.5px;text-align:left;cursor:pointer;
+    background:none;border:none;padding:2px 0;color:inherit;
+  }
+  .pbrow i{font-style:normal;font-weight:600}
+  .pbrow u{text-decoration:none;color:var(--ink2);font-size:12.5px}
+  .pbrow s{text-decoration:none;margin-left:auto;font-size:11px;color:var(--ink3)}
+  .pbrow.on s{color:var(--blue)}
+  /* 对比词后面的音标：不是当前这个音的那半截单独点亮，点它就听那个词 */
+  .pbipa{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:12px;color:var(--ink3);white-space:nowrap;
+  }
+  .pbipa .pipa{
+    display:inline-block;background:#e7f0ff;color:var(--blue);
+    border-radius:5px;padding:0 3px;margin:0 1px;
+    font-weight:600;cursor:pointer;
+  }
+  .pbipa .pipa:hover{background:var(--blue);color:#fff}
+  .pbtip{margin:0;font-size:13px;line-height:1.65;color:var(--ink)}
+  .pbempty{margin:0;font-size:12.5px;line-height:1.6;color:var(--ink3)}
+  .pbmore{
+    display:flex;align-items:center;gap:5px;width:100%;margin-top:9px;
+    font-family:inherit;font-size:12px;padding:6px 2px 0;cursor:pointer;
+    background:none;border:0;border-top:1px solid var(--line);color:var(--ink3);
+  }
+  .pbmore:hover{color:var(--blue)}
+  .pbmore.on{color:var(--blue)}
+  .pbcaret{transition:transform .15s}
+  .pbmore.on .pbcaret{transform:rotate(180deg)}
+  .pbdeep{display:none;margin-top:6px}
+  .pbdeep.on{display:block}
+  .pbdeep p{margin:0 0 6px;font-size:12.5px;line-height:1.65;color:var(--ink2)}
+  .pbdeep p:last-child{margin-bottom:0}
+  .pblab2{
+    display:inline-block;font-size:11px;color:var(--ink3);
+    border:1px solid var(--line);border-radius:5px;padding:0 5px;margin-right:6px;
+  }
+  .pblab2 .pedit{float:none;margin-left:5px}
+  .pbub textarea{
+    display:block;width:100%;box-sizing:border-box;margin-top:6px;
+    padding:8px 10px;border:1px solid #ddd;border-radius:9px;
+    font-family:inherit;font-size:13px;line-height:1.6;
+    color:var(--ink);background:#fff;resize:vertical;
+  }
+  .pbub textarea:focus{outline:none;border-color:var(--blue)}
+
+  .struct{display:flex;flex-direction:column;gap:9px}
+  .seg{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .segtxt{
+    font-family:"SF Mono",ui-monospace,Consolas,monospace;
+    font-size:17px;
+    font-weight:500;
+  }
+  .tag{
+    display:inline-block;
+    font-size:10px;
+    line-height:15px;
+    padding:0 5px;
+    border-radius:4px;
+    font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    font-weight:600;
+    letter-spacing:.04em;
+    vertical-align:1px;
+  }
+  .tag.r{background:#eef0f3;color:var(--root)}
+  .tag.m{background:var(--mem-bg);color:var(--mem)}
+  .segglos{font-size:14px;color:var(--ink2)}
+  /* 构件行：点一下就地改（改释义 / 换根·记·我）；改过的行挂橙字「我」＋复原 */
+  .seg[data-seg]{cursor:text;border-radius:6px;transition:background .12s}
+  .seg[data-seg]:hover{background:#fafafc}
+  .seg.myed-row{background:#fffaf3;border-radius:6px;padding:2px 6px;margin:0 -6px}
+  .tag.myed{background:#fff1e0;color:#b45309;margin-left:2px}
+  .segback{
+    font-family:inherit;font-size:11px;line-height:17px;
+    padding:0 7px;border-radius:9px;
+    border:1px solid #e6d4bd;background:#fff8ef;color:#a15a00;
+    cursor:pointer;margin-left:auto;
+  }
+  .segback:hover{border-color:#c99a5c;background:#fff2e2}
+  .seg.editing{background:#f6f8fc;border-radius:8px;padding:6px 8px;margin:0 -8px;align-items:center}
+  .seg.editing .segin{
+    flex:1 1 150px;min-width:0;
+    padding:6px 9px;border:1px solid #d9dee8;border-radius:8px;
+    font-family:inherit;font-size:13.5px;color:var(--ink);background:#fff;
+  }
+  .seg.editing .segin:focus{outline:none;border-color:var(--blue)}
+  .seg.editing .segmk{
+    height:29px;padding:0 6px;border-radius:8px;
+    border:1px solid #d9dee8;background:#fff;
+    font-family:inherit;font-size:12.5px;color:var(--ink2);cursor:pointer;
+  }
+  .segbtn{
+    height:29px;padding:0 12px;border-radius:9px;
+    border:1px solid #d9dee8;background:#fff;
+    font-family:inherit;font-size:12.5px;color:var(--ink2);cursor:pointer;
+  }
+  .segbtn:hover{border-color:var(--ink3)}
+  .segbtn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+  .seg.editing .segmk.cur{background:#eef2fb;border-color:var(--ink);color:var(--ink)}
+
+  .literal{
+    margin-top:4px;
+    font-size:15px;
+    color:var(--ink);
+    padding-left:12px;
+    border-left:2px solid var(--line);
+    line-height:1.6;
+  }
+  .memo{
+    font-size:19px;
+    font-weight:500;
+    letter-spacing:.2px;
+    line-height:1.6;
+  }
+  /* 词素账本：结构块末尾一行构件提示，克制、不抢戏 */
+  .mph{
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px dotted var(--line);
+    font-size:12.5px;
+    color:var(--ink3);
+    line-height:1.8;
+  }
+  .mph .mrow{display:block}
+  .mph .mrow + .mrow{margin-top:3px}
+  .mph .mtag{
+    display:inline-block;
+    padding:0 5px;
+    margin-right:6px;
+    border-radius:4px;
+    font-size:11px;
+    line-height:17px;
+  }
+  .mph .mtag.s{background:rgba(0,110,220,.10);color:#0a63b0}
+  .mph .mtag.f{background:rgba(200,110,0,.13);color:#a15a00}
+  .mph .mtag.w{background:rgba(20,120,90,.12);color:#0e7355}
+  /* 同族词：占原来那行的位置，一条条排、自然折行，不截断、不省字 */
+  .mph .mtag.t{background:#eff1f5;color:#4a5266;vertical-align:baseline}
+  .mph .famrow{
+    display:block;
+    font-size:12px;
+    line-height:1.6;
+    color:var(--ink3);
+  }
+  .mph .famrow .fi{white-space:normal}
+  /* 条与条之间用「·」分隔，横向留 3px+3px＝6px */
+  .mph .famrow .fi + .fi::before{content:'·';margin:0 3px;color:var(--ink3);opacity:.55}
+  .mph .famrow b{font-weight:600;color:var(--ink)}
+  /* 词源构件行手改：点一行就地写自己的理解，改过的行橙字「我」+ 行末复原 */
+  .mph .mrow[data-mrow]{cursor:pointer;border-radius:6px;transition:background .12s}
+  .mph .mrow[data-mrow]:hover{background:#f7f9fd}
+  .mph .mrow.mrow-mine{background:#fffaf3;padding:1px 6px;margin-left:-6px;margin-right:-6px}
+  .mph .mtag.mine{background:#fff1e0;color:#b45309}
+  .mrowback{
+    font-family:inherit;font-size:11px;line-height:17px;padding:0 7px;border-radius:9px;
+    border:1px solid #e6d4bd;background:#fff8ef;color:#a15a00;cursor:pointer;margin-left:6px;
+  }
+  .mrowback:hover{border-color:#c99a5c;background:#fff2e2}
+  .mrowedit{
+    margin:5px 0 7px;padding:7px 8px;background:#f6f8fc;border-radius:8px;
+    display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+  }
+  .mrowedit .mrowin{
+    flex:1 1 140px;min-width:0;padding:6px 9px;border:1px solid #d9dee8;border-radius:8px;
+    font-family:inherit;font-size:13px;color:var(--ink);background:#fff;
+  }
+  .mrowedit .mrowin:focus{outline:none;border-color:var(--blue)}
+  .mrowedit .mrowmk{
+    height:27px;padding:0 8px;border-radius:8px;border:1px solid #d9dee8;background:#fff;
+    font-family:inherit;font-size:12px;color:var(--ink2);cursor:pointer;
+  }
+  .mrowedit .mrowmk.cur{background:#eef2fb;border-color:var(--ink);color:var(--ink)}
+  .mrowedit .mrowbtn{
+    height:27px;padding:0 11px;border-radius:9px;border:1px solid #d9dee8;background:#fff;
+    font-family:inherit;font-size:12px;color:var(--ink2);cursor:pointer;
+  }
+  .mrowedit .mrowbtn:hover{border-color:var(--ink3)}
+  .mrowedit .mrowbtn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+  .mrowaddwrap{display:block;margin-top:7px}
+  .mrowadd{
+    font-family:inherit;font-size:11px;line-height:18px;padding:0 8px;border-radius:9px;
+    border:1px dashed #dfe3ea;background:#fff;color:var(--ink3);cursor:pointer;opacity:.85;
+  }
+  .mrowadd:hover{border-color:#c9d1dd;color:var(--ink2)}
+  /* 窄屏（≤430px）：同族词略缩一号，尽量把行数压到 3 行内 */
+  @media (max-width:430px){
+    .mph .famrow{font-size:11.5px}
+    /* 五格还是那一排：缩字号、收间距，绝不折行、绝不横向溢出 */
+    .audio{gap:6px}
+    .abtn,.atog{font-size:12px;padding:0 3px;gap:4px}
+    .abtn svg{width:11px;height:11px}
+    /* 词库入口跟着发音条一起缩，始终与「复读×2」同宽同列 */
+    .librow{gap:6px}
+    .libbtn{font-size:12px;padding:0 3px;gap:4px}
+    .libbtn .libn{font-size:11px}
+    .ratecap{height:22px;padding:0 8px;font-size:10.5px;line-height:22px}
+  }
+  .mph b{font-weight:600;color:var(--ink);letter-spacing:.02em}
+  .mph .mw{color:inherit;border-bottom:1px dotted currentColor;cursor:pointer;text-decoration:none}
+  .mph .mw:hover{color:var(--ink)}
+  /* 另有词也用到的构件：可点，虚线下划线示意「点得动」 */
+  .mph b.jm{cursor:pointer;border-bottom:1px dashed currentColor;padding-bottom:1px}
+  .mph b.jm:hover{color:var(--blue);border-bottom-style:solid}
+  .mph .mmore{opacity:.7}
+
+  .edited{
+    display:inline-block;
+    font-size:10px;
+    color:var(--mem);
+    background:var(--mem-bg);
+    padding:1px 6px;
+    border-radius:5px;
+    margin-left:8px;
+    vertical-align:2px;
+  }
+
+  /* ---------- 评分条 ---------- */
+  #rate{
+    flex:0 0 auto;
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    padding:14px 20px calc(18px + env(safe-area-inset-bottom));
+    background:rgba(245,245,247,.9);
+    backdrop-filter:saturate(180%) blur(20px);
+    border-top:1px solid var(--line);
+  }
+  .rbtn{
+    flex:1;
+    max-width:190px;
+    height:50px;
+    border:none;
+    border-radius:14px;
+    font-size:15px;
+    font-weight:500;
+    font-family:inherit;
+    cursor:pointer;
+    background:#fff;
+    color:var(--ink);
+    box-shadow:0 1px 2px rgba(0,0,0,.06);
+    transition:transform .1s,background .15s;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  }
+  .rbtn:active{transform:scale(.97)}
+  .rbtn small{font-size:11px;color:var(--ink3);font-weight:400}
+  .rbtn[data-k="0"]{color:#c0392b}
+  .rbtn[data-k="1"]{color:#b25000}
+  .rbtn[data-k="2"]{color:#1a7f37}
+
+  /* ---------- 侧栏 ---------- */
+  aside{
+    flex:0 0 268px;
+    border-left:1px solid var(--line);
+    background:#fbfbfd;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  aside.hide{display:none}
+  .ahr{display:flex;align-items:center;gap:10px}
+  #sideX{display:none;font-style:normal;font-weight:400;cursor:pointer}
+  #sideMask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.26);z-index:55}
+  .ahead{
+    padding:14px 16px 10px;
+    font-size:12px;
+    color:var(--ink3);
+    display:flex;justify-content:space-between;align-items:center;
+    letter-spacing:.06em;
+  }
+  .alist{flex:1;overflow-y:auto;padding:0 8px 20px}
+  .row{
+    display:flex;align-items:center;gap:9px;
+    padding:8px 10px;
+    border-radius:9px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .row:hover{background:#f0f0f3}
+  .row.cur{background:#e8e8ed;font-weight:600}
+  .dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:#d2d2d7}
+  .dot.b1{background:#f0a020}
+  .dot.b2{background:#3aa757}
+  .row .rw{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .rc{font-size:11px;color:var(--ink3)}
+
+  /* ---------- 面板 / 弹层 ---------- */
+  .sheet{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.32);
+    display:none;
+    align-items:center;justify-content:center;
+    padding:24px;
+    z-index:50;
+  }
+  .sheet.open{display:flex}
+  .panel{
+    background:#fff;
+    border-radius:18px;
+    width:100%;
+    max-width:560px;
+    max-height:86vh;
+    overflow-y:auto;
+    padding:24px 26px 20px;
+    box-shadow:0 20px 60px rgba(0,0,0,.2);
+  }
+  .panel h3{margin:0 0 4px;font-size:18px;font-weight:600}
+  .panel .hint{font-size:13px;color:var(--ink3);margin:0 0 16px;line-height:1.55}
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:12px;color:var(--ink3);margin-bottom:5px;letter-spacing:.04em}
+  .field input,.field textarea{
+    width:100%;
+    padding:9px 11px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    font-size:14px;
+    font-family:inherit;
+    color:var(--ink);
+    outline:none;
+    background:#fbfbfd;
+    resize:vertical;
+  }
+  .field input:focus,.field textarea:focus{border-color:var(--blue);background:#fff}
+  .field textarea.code{font-family:"SF Mono",ui-monospace,Consolas,monospace;font-size:13px;line-height:1.7}
+  .prow{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .btn{
+    height:38px;padding:0 18px;border:none;border-radius:10px;
+    font-size:14px;font-family:inherit;cursor:pointer;font-weight:500;
+  }
+  .btn.pri{background:var(--blue);color:#fff}
+  .btn.gho{background:#f0f0f3;color:var(--ink)}
+  .btn.dan{background:#ffeeed;color:#c0392b}
+  .empty{color:var(--ink3);font-size:14px;text-align:center;padding:50px 0}
+  .pendlist{max-height:230px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink2);line-height:1.9;background:#fbfbfd}
+  kbd{font-family:inherit;font-size:11px;background:#f0f0f3;border-radius:4px;padding:1px 5px;color:var(--ink2)}
+
+  /* ---------- 词素账本面板：三栏清单，纯文字，不上图表 ---------- */
+  .bktop{font-size:12px;color:var(--ink3);margin:0 0 16px;letter-spacing:.03em}
+  .bkcol{margin-bottom:20px}
+  .bkcol:last-child{margin-bottom:2px}
+  .bkh{font-size:13px;font-weight:600;color:var(--ink);padding-bottom:6px}
+  .bkh span{font-size:11px;color:var(--ink3);font-weight:400;margin-left:8px}
+  .bkrow{
+    display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
+    padding:7px 0;border-top:1px solid var(--line);font-size:13px;color:var(--ink);
+  }
+  .bkrow .bkk{font-weight:600;letter-spacing:.02em;min-width:46px}
+  .bkrow .bkt{font-size:10.5px;border-radius:4px;padding:0 5px;line-height:17px}
+  .bkrow .bkt.s{background:rgba(0,110,220,.10);color:#0a63b0}
+  .bkrow .bkt.f{background:rgba(200,110,0,.13);color:#a15a00}
+  .bkrow .bkt.w{background:rgba(20,120,90,.12);color:#0e7355}
+  .bkrow .bkn{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums}
+  .bkrow .bkw{flex:1 1 150px;font-size:12px;color:var(--ink3);line-height:1.9}
+  .bkrow .bkw a{color:var(--blue);cursor:pointer;border-bottom:1px dotted currentColor}
+  .bkrow .bkwt{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums}
+  .bkempty{font-size:12px;color:var(--ink3);padding:8px 0 2px;border-top:1px solid var(--line)}
+  /* 我改那一栏：逐条列出改过的词与构件，能单条退回词源原值 */
+  .bkedit{
+    display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;
+    padding:4px 0 4px 12px;font-size:12px;color:var(--ink3);
+    border-left:2px solid #f0e2cf;margin:2px 0 2px 4px;
+  }
+  .bkedit a{color:var(--blue);cursor:pointer;border-bottom:1px dotted currentColor}
+  .bkedit s{opacity:.7}
+  .bkedit .bkedv{color:var(--ink2)}
+  .bkedit .bkedmk{font-size:10.5px;border-radius:4px;padding:0 5px;line-height:16px;background:#fff1e0;color:#b45309}
+  .bkedit button{
+    font-family:inherit;font-size:11px;line-height:17px;padding:0 7px;
+    border-radius:9px;border:1px solid #e6d4bd;background:#fff8ef;color:#a15a00;cursor:pointer;
+  }
+  .bkedit button:hover{border-color:#c99a5c}
+  /* 账本面板底部那一行：音色小胶囊 */
+  .bkeditwrap{margin-top:12px;border-top:1px dashed #e6d4bd;padding-top:10px}
+  .bkedith{font-size:11.5px;color:#a15a00;margin-bottom:6px}
+  .bkedith span{color:var(--ink3);margin-left:6px}
+  .bkedit .bkk{font-family:"SF Mono",ui-monospace,Consolas,monospace;color:var(--ink);opacity:.85}
+  .bkedit .bkn{font-size:11.5px;color:var(--ink3)}
+  .bkedit .bkt{font-size:10px;line-height:15px;padding:0 5px;border-radius:4px;background:#fff1e0;color:#b45309}
+  .bkfoot{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:12px;border-top:1px solid var(--line)}
+  .bkfoot .bkcap{
+    height:26px;padding:0 12px;border:none;border-radius:13px;
+    background:#f0f0f3;color:var(--ink3);
+    font-family:inherit;font-size:11.5px;line-height:26px;letter-spacing:.02em;
+    cursor:pointer;transition:background .15s,color .15s;
+  }
+  .bkfoot .bkcap:hover{background:#e4e4e9;color:var(--ink2)}
+  .bkfoot .bkcap.on{background:#e8e8ed;color:var(--ink)}
+  .bkfoot .bkcapTip{font-size:11px;color:var(--ink3)}
+
+  @media (max-width:820px){
+    /* 窄屏：词表改成右侧抽屉，点「词表」滑出，点遮罩/×/选词后收起 */
+    aside{
+      display:flex;
+      position:fixed; top:0; right:0; bottom:0;
+      width:min(86vw,330px);
+      z-index:56;
+      background:#fbfbfd;
+      border-left:1px solid var(--line);
+      box-shadow:-14px 0 36px rgba(0,0,0,.18);
+      transform:translateX(104%);
+      transition:transform .24s ease;
+      padding-top:env(safe-area-inset-top);
+      padding-bottom:env(safe-area-inset-bottom);
+      visibility:hidden;
+    }
+    aside.show{transform:translateX(0);visibility:visible}
+    aside.hide{display:flex}
+    #sideMask.show{display:block}
+    #sideX{display:inline-block;padding:0 4px;font-size:20px;line-height:1;color:var(--ink3)}
+    .card{padding:24px 22px 20px;border-radius:18px}
+    .word h1{font-size:32px}
+    #stage{padding:16px 12px 8px}
+    .rbtn{max-width:none;height:46px}
+    header{padding:10px 12px 8px}
+    #rate{padding:10px 12px calc(12px + env(safe-area-inset-bottom))}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="search">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+    <input id="q" type="text" placeholder="搜英文或中文…" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="revwrap">
+    <button class="iconbtn" id="btnReview" title="复习">复习 <span id="dueCount" style="opacity:.5"></span></button>
+    <div class="revmenu" id="revMenu">
+      <button data-rev="due"><b>只看到期</b><small>到期的才过一遍</small></button>
+      <button data-rev="all"><b>全部 48 个音素</b><small>整张音素表 · 对着听</small></button>
+    </div>
+  </div>
+  <button class="iconbtn" id="btnList" title="词表">词表</button>
+  <button class="iconbtn" id="btnBook" title="词素账本">账本</button>
+  <button class="iconbtn" id="btnIO" title="导入 / 导出">导入</button>
+</header>
+
+<main>
+  <div id="stage">
+    <div id="cardHost"></div>
+  </div>
+  <aside id="side">
+    <div class="ahead"><span>全部词</span><span class="ahr"><span id="storeStat"></span><b id="sideX" title="收起">×</b></span></div>
+    <div class="alist" id="alist"></div>
+  </aside>
+</main>
+
+<div id="sideMask"></div>
+
+<div id="rate">
+  <button class="rbtn" data-k="0">不认识<small>1</small></button>
+  <button class="rbtn" data-k="1">模糊<small>2</small></button>
+  <button class="rbtn" data-k="2">认识<small>3</small></button>
+</div>
+
+<!-- 词库面板：背词时自己收进来的词，独立一份清单 -->
+<div class="sheet" id="shLib">
+  <div class="panel">
+    <h3>词库</h3>
+    <p class="hint">你背单词时收进来的词都在这（音素面板里点「＋收」）。点词就念它；「导入」＝加进要背的词表，侧栏里看得到、也跟着一起背；「移出」＝从词库拿掉，原词库文件一个字不动。</p>
+    <div class="libops">
+      <span class="libtip" id="libTip">点词听发音</span>
+      <span class="libacts"><button class="lact" data-lib="cpyall" title="整库复制成纯文本，一行一个词，方便粘到别处">复制整库</button><button class="lact" data-lib="impall" title="整库加进要背的词表">全部导入</button></span>
+    </div>
+    <div class="liblist" id="libList"></div>
+    <div class="prow"><button class="btn gho" id="libClose">关闭</button></div>
+  </div>
+</div>
+
+<!-- 词素账本面板 -->
+<div class="sheet" id="shBook">
+  <div class="panel">
+    <h3>词素账本</h3>
+    <p class="hint">只记你真看过、真拆过的构件。真词源、自造、你自己划的「我」，三栏分开算，永远不合栏。右边的数字是权重：用到这个词的全部背记数据累加，背得越多、错得越多越靠前。</p>
+    <div class="bktop" id="bkTop"></div>
+    <div id="bkBody"></div>
+    <div class="bkfoot">
+      <button class="bkcap" id="voiceCap" title="点一下换音色：男女轮换 / 全女声 / 全男声">音色：男女轮换</button>
+      <span class="bkcapTip">男女轮换＝奇数个词女声、偶数个词男声；换音色只影响怎么念，账本里记的账一条不动。</span>
+    </div>
+    <div class="prow"><button class="btn gho" id="bkClose">关闭</button></div>
+  </div>
+</div>
+
+<!-- 编辑面板 -->
+<div class="sheet" id="shEdit">
+  <div class="panel">
+    <h3>改这个词的解释</h3>
+    <p class="hint">改动只存在你本机，不会动原词库文件。改完这里就是最终版，复习时一直用它。</p>
+    <div class="field"><label>核心中文义</label><input id="eCn" type="text"></div>
+    <div class="field"><label>音标（带斜杠，例如 /ˈkɒnflɪkt/）</label><input id="eIpa" type="text"></div>
+    <div class="field"><label>音节切分</label><input id="eSyl" type="text"></div>
+    <div class="field"><label>读音钩子</label><input id="eRead" type="text"></div>
+    <div class="field"><label>结构切分（每行一条：片段 | 含义 | r 根 / m 记 / w 我）</label>
+      <textarea id="eStruct" class="code" rows="4"></textarea></div>
+    <div class="field"><label>字面义 → 引申义</label><textarea id="eLiteral" rows="2"></textarea></div>
+    <div class="field"><label>收口句（20 字以内，允许自嘲吐槽）</label><input id="eMemo" type="text"></div>
+    <div class="prow">
+      <button class="btn gho" id="eCancel">取消</button>
+      <button class="btn dan" id="eReset">还原原文</button>
+      <button class="btn pri" id="eSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 导入导出面板 -->
+<div class="sheet" id="shIO">
+  <div class="panel">
+    <h3>导入 / 导出</h3>
+    <p class="hint">粘贴的词如果在词库里，直接翻出来；不在词库的，现开一张空卡，你自己填。</p>
+    <div class="field"><label>粘贴要背的词（一行一个，或整段文本自动提取）</label>
+      <textarea id="ioIn" rows="4" placeholder="abandon&#10;consider&#10;…"></textarea></div>
+    <div class="prow" style="justify-content:flex-start;margin-top:0">
+      <button class="btn gho" id="ioAdd">加入</button>
+      <button class="btn gho" id="ioCopy">复制没填完的清单</button>
+      <button class="btn gho" id="ioExport">导出全部数据</button>
+    </div>
+    <div class="prow" style="justify-content:flex-start;margin-top:10px">
+      <button class="btn gho" id="ioBookOut">导出词素账本</button>
+      <button class="btn gho" id="ioBookIn">导入词素账本</button>
+      <input type="file" id="ioBookFile" accept=".json,application/json" style="display:none">
+    </div>
+    <p class="hint" id="ioBookTip" style="margin:6px 0 0">账本＝拆过的构件记下的账（词源件一栏、自造件一栏）。导入是合并，不会覆盖掉本机已有的账。</p>
+    <div class="field" style="margin-top:18px"><label>还没填完（缺音标 / 缺结构 / 缺收口句）</label>
+      <div class="pendlist" id="pendBox">空</div></div>
+    <div class="prow">
+      <button class="btn dan" id="ioReset">清空我的进度与改动</button>
+      <button class="btn pri" id="ioClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<script src="data/phon.js"></script>
+<script src="data/phon2.js"></script>
+<script src="data/lexicon.js"></script>
+<script src="data/morph.js"></script>
+<script src="data/wordjudge.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ================= 存储层 =================
+   progress : 每个词的复习档位与到期日
+   overrides: 手改后的解释，优先于词库
+   pending  : 待生成的词
+==========================================*/
+const KEY = { p:'vm.progress.v1', o:'vm.overrides.v1', d:'vm.pending.v1', m:'vm.morph.v1' };
+const ls = {
+  get(k, def){ try{ const v = localStorage.getItem(k); return v? JSON.parse(v) : def; }catch(e){ return def; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let progress = ls.get(KEY.p, {});
+let overrides = ls.get(KEY.o, {});
+let pending  = ls.get(KEY.d, []);
+
+const saveP = ()=> ls.set(KEY.p, progress);
+const saveO = ()=> ls.set(KEY.o, overrides);
+const saveD = ()=> ls.set(KEY.d, pending);
+
+/* 日期工具：一律按本机时区取 YYYY-MM-DD。
+   不能用 toISOString()：它按 UTC 输出，东八区的早上 8 点前会算成昨天，
+   到期日就会比本地日期早一天。 */
+function ymd(t){
+  const d = (t === undefined || t === null) ? new Date() : new Date(t);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+/* ================= 数据层 ================= */
+const PARTS = window.LEXICON_PARTS || [];
+let WORDS = [];
+PARTS.forEach(part => { (part.words||[]).forEach(w => { if(w && w.w) WORDS.push(w); }); });
+const BY_W = {};
+WORDS.forEach(w => { BY_W[w.w.toLowerCase()] = w; });
+/* 词源自带的词键：移出词库时用来分辨「只退收藏标记」还是「整条撤掉」 */
+const SRC_KEYS = {};
+WORDS.forEach(w => { SRC_KEYS[w.w.toLowerCase()] = 1; });
+
+/* ===== P3：词库＝收藏夹，词表＝要背的清单 =====
+   收藏进来的词先在词库里待着，点「导入」才进 WORDS（侧栏词表 / 复习 / 计数）。
+   老存档里已经收进来的词，升级这一次性补上 inlist，保持原来的可见与可背，
+   不凭空消失；之后新收的词才需要手动导入。 */
+const LIB_MIG = 'vm.libpool.v1';
+(function libMigrate(){
+  try{
+    if(localStorage.getItem(LIB_MIG)) return;
+    Object.keys(overrides).forEach(k => {
+      const o = overrides[k];
+      if(o && o.custom && !o.inlist) o.inlist = ymd();
+    });
+    saveO();
+    localStorage.setItem(LIB_MIG, '1');
+  }catch(e){}
+})();
+
+/* 自己新建的词（词库里本来没有），导入词表后当成正常词参与列表与复习 */
+function absorbCustom(){
+  Object.keys(overrides).forEach(k => {
+    const o = overrides[k];
+    if(o && o.custom && o.inlist && !BY_W[k]){
+      const obj = Object.assign({ w:k }, o);
+      WORDS.push(obj);
+      BY_W[k] = obj;
+    }
+  });
+}
+absorbCustom();
+
+/* 建一张空卡：词库没有的词，直接开一张给你手写。
+   opts.toList = true 表示这张卡直接进要背的词表（粘贴词表、搜索框回车建卡都走这条）。 */
+function newCard(raw, opts){
+  const kw = String(raw||'').trim().toLowerCase().replace(/[^a-z'-]/g, '');
+  if(!kw) return null;
+  const toList = !!(opts && opts.toList);
+  if(BY_W[kw]){
+    const o0 = overrides[kw];
+    if(toList && o0 && o0.custom && !o0.inlist){ o0.inlist = ymd(); saveO(); }
+    return BY_W[kw];
+  }
+  overrides[kw] = {
+    w: kw, custom: true, mine: true,
+    cn:'', pos:'', ipa:'', syl:'', read:'', literal:'', memo:'', struct:[],
+    editedAt: ymd()
+  };
+  if(toList) overrides[kw].inlist = ymd();
+  saveO();
+  absorbCustom();
+  return BY_W[kw] || Object.assign({ w:kw }, overrides[kw]);
+}
+
+function merged(w){
+  const o = overrides[w.w.toLowerCase()];
+  return o ? Object.assign({}, w, o) : w;
+}
+const isEdited = w => !!overrides[w.w.toLowerCase()];
+
+/* ================= 复习调度 ================= */
+const DAY = 86400000;
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); };
+function dueOf(p){
+  const st = progress[p.w];
+  if(!st || !st.due) return 0;
+  return new Date(st.due + 'T00:00:00').getTime();
+}
+function rate(w, k){
+  const id = w.toLowerCase();
+  const st = progress[id] || { box:0, seen:0, due:null };
+  st.seen = (st.seen||0) + 1;
+  st.box = st.box||0;
+  let days;
+  if(k === 0){ st.box = 0; days = 1; }
+  else if(k === 1){ st.box = Math.max(1, st.box); days = 3; }
+  else { st.box = Math.min(3, st.box + 1); days = st.box >= 3 ? 30 : 7; }
+  const d = new Date(today() + days*DAY);
+  st.due = ymd(d);
+  st.last = ymd();
+  progress[id] = st;
+  saveP();
+}
+const isDue = id => { const t = dueOf(id); return t > 0 && t <= today(); };
+
+/* ================= 视图状态 ================= */
+let cur = null;          // 当前词对象
+let reviewMode = false;  // 只看到期
+let filterText = '';
+
+/* ================= 发音 =================
+   音频一次只建一个 <audio>，点哪个才去要哪个文件，绝不预载、不内嵌。
+     audio/w/{词}_f.mp3 · {词}_m.mp3        单词，男女声都有
+     audio/s/{词}_f.mp3 或 {词}_m.mp3       例句，每词只有一个音色
+   文件缺失或播放失败：自动换另一个音色试一次，仍不行就静默放弃，
+   页面不弹任何提示，不挡任何操作。
+
+   发音条上一排四格，其中一个是真开关，状态存本机（关掉页面再回来还是你走时的样子）：
+     复读＝点亮之后每一次单条播放都连念 REP_TIMES 遍，两遍之间停 REP_GAP 毫秒。
+   单词就只念单词，例句就只念例句，不互相串（原来的「连读」自动串句已按用户意见删掉）。
+   播放途中再点任意发音键＝打断重来，旧定时器一律作废，绝不叠着念。
+   语速不在这排里，它在词头右上角那颗小胶囊上（点一下 0.7 / 0.85 / 1.0 / 1.2）。
+   音色（男女轮换 / 全女声 / 全男声）两处都能换：词头那颗小旋钮、账本底部胶囊，功能与记的账都不动。
+==========================================*/
+const AKEY = 'vm.audio.v1';
+const REP_TIMES = 2;      // 复读开关点亮后，每条念几遍
+const REP_GAP = 350;      // 连念的同一套，两遍之间停多久（ms）
+
+/* 老配置里存过 loop、times 这类旧字段，一律不认；只按下面的白名单重建。
+   字段读不懂就回落默认值，绝不因为旧数据报错。 */
+const ASET = (function(){
+  const old = ls.get(AKEY, null);
+  const s = (old && typeof old === 'object') ? old : {};
+  return {
+    voice: ['alt','f','m'].indexOf(s.voice) >= 0 ? s.voice : 'alt',
+    rate:  [0.7, 0.85, 1, 1.2].indexOf(Number(s.rate)) >= 0 ? Number(s.rate) : 1,
+    rep:   !!s.rep      // 复读开关（每条连念 2 遍）
+  };
+})();
+const saveA = () => ls.set(AKEY, { voice:ASET.voice, rate:ASET.rate, rep:ASET.rep });
+const repTimes = () => REP_TIMES;
+
+const VOICE_LABEL = { alt:'男女轮换', f:'全女声', m:'全男声' };
+/* 词头那颗旋钮地方小，用短名；账本那颗地方宽，用全名 */
+const VOICE_SHORT = { alt:'男女', f:'女声', m:'男声' };
+const VOICE_ORDER = ['alt','f','m'];
+const RATE_ORDER  = [0.7, 0.85, 1, 1.2];
+/* 语速标签：别让 0.8499999 这种东西跑到脸上 */
+const rateLabel = r => {
+  const n = Number(r);
+  if(n === 1) return '1.0×';
+  if(n === 1.2) return '1.2×';
+  if(n === 0.85) return '0.85×';
+  return '0.7×';
+};
+
+function wordPos(w){
+  for(let i = 0; i < WORDS.length; i++){ if(WORDS[i].w === w.w) return i; }
+  return 0;
+}
+function voiceOf(w){
+  if(ASET.voice !== 'alt') return ASET.voice;
+  return wordPos(w) % 2 === 0 ? 'f' : 'm';
+}
+function normWord(s){
+  return String(s || '').toLowerCase().replace(/[^a-z'\-]/g, '');
+}
+
+const SPK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>';
+
+const PEN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8a2.1 2.1 0 00-3-3L5 16v4z"/><path d="M14.5 5.5l3 3"/></svg>';
+
+/* 音频地址解析：多文件运行时直接走相对路径；
+   打包成单文件后 window.__VM_AUDIO 里是 base64 表，优先用它。 */
+function audioURL(u){
+  const m = window.__VM_AUDIO;
+  return (m && m[u]) || u;
+}
+
+/* 复读开关：标签永远是「复读×2」，亮灭只看开关本身（不再跟着某一次播放闪） */
+function repBtn(){
+  const b = document.querySelector('[data-t="rep"]');
+  if(!b) return;
+  b.textContent = '复读×' + repTimes();
+  b.classList.toggle('on', !!ASET.rep);
+}
+
+const AU = (function(){
+  /* 打断规则：每次播放都换一次 token，旧 job 的定时器醒来先看 token，
+     对不上就直接收手 —— 中途再点一定是重来，绝不叠着念。 */
+  let el = null, job = null, gap = null, token = 0;
+  let lastKind = 'w';      // 最近一次点的是词还是句；没点过＝词
+
+  function clearGap(){
+    if(gap){ clearTimeout(gap); gap = null; }
+  }
+
+  function node(){
+    if(el) return el;
+    el = new Audio();
+    el.preload = 'none';
+    el.addEventListener('ended', () => {
+      const j = job;
+      if(!j || j.token !== token) return;
+      const it = j.q[j.i];
+      if(!it) return;
+      j.done += 1;
+      const tk = j.token;
+      if(j.done < it.need){
+        /* 这条还没念够：停 REP_GAP 毫秒再念同一份文件 */
+        clearGap();
+        gap = setTimeout(() => {
+          gap = null;
+          if(!job || job.token !== tk) return;
+          fire();
+        }, REP_GAP);
+        return;
+      }
+      /* 这一套全念完了：自己收工，灯全灭 */
+      job = null;
+      paint(it.kind, false);
+    });
+    el.addEventListener('error', () => { if(job) tryNext(); });
+    return el;
+  }
+
+  /* 播放中把对应按钮点亮；停下就灭 */
+  function paint(kind, on){
+    if(!kind) return;
+    const host = document.getElementById('cardHost');
+    if(!host) return;
+    const btns = host.querySelectorAll('[data-a="' + kind + '"]');
+    for(let i = 0; i < btns.length; i++) btns[i].classList.toggle('on', !!on);
+  }
+
+  /* 首选音色没有文件：换另一个；两个都没有就跳过这条，静默 */
+  function tryNext(){
+    const j = job;
+    if(!j) return;
+    j.i2 += 1;
+    if(j.i2 >= j.order.length){
+      if(j.i + 1 < j.q.length){ j.i += 1; j.done = 0; j.i2 = 0; fire(); return; }
+      const it = j.q[j.i];
+      job = null;
+      if(it) paint(it.kind, false);
+      return;
+    }
+    fire();
+  }
+
+  /* 换歌：地址没变就直接回到 0 秒，省一次重新解码 */
+  function load(url){
+    const a = node();
+    try { a.pause(); } catch(e){}
+    a.loop = false;
+    if(a.dataset.url === url){
+      try { a.currentTime = 0; } catch(e){}
+    } else {
+      a.dataset.url = url;
+      a.src = audioURL(url);
+    }
+    a.playbackRate = ASET.rate;
+    return a.play();
+  }
+
+  /* 放当前这一条（第 j.i 条，第 j.i2 个音色） */
+  function fire(){
+    const j = job;
+    if(!j) return;
+    const it = j.q[j.i];
+    if(!it) return;
+    if(j.painted !== it.kind){ paint(j.painted, false); j.painted = it.kind; }
+    const url = 'audio/' + (it.kind === 'w' ? 'w' : 's') + '/' + j.base + '_' + j.order[j.i2] + '.mp3';
+    j.url = url;
+    const p = load(url);
+    if(p && p.catch) p.catch(() => { if(job === j) tryNext(); });
+    paint(it.kind, true);
+  }
+
+  function needNow(times){
+    const n = Math.round(Number(times));
+    if(isFinite(n) && n >= 1) return n;              // 叫得明确就按叫的来
+    return ASET.rep ? REP_TIMES : 1;                 // 否则看复读开关
+  }
+
+  /* 一套＝要点的这一条（词或句），只念这一条 */
+  /* target 传了就念传进来的那个词（胶囊小卡里点听别的词用），不传就是眼前这张卡 */
+  function start(kind, times, solo, target){
+    const src = target || cur;
+    if(!src) return;
+    const w = merged(src);
+    const base = normWord(w.w);
+    if(!base) return;
+    const k = (kind === 's') ? 's' : 'w';
+    lastKind = k;
+    const need = needNow(times);
+    const pref = voiceOf(src);
+    const order = pref === 'f' ? ['f','m'] : ['m','f'];   // 首选音色缺了就换一个
+    const q = [{ kind:k, need:need }];
+    token += 1;
+    clearGap();
+    job = { base:base, order:order, i2:0, url:'', q:q, i:0, done:0, painted:'', token:token };
+    fire();
+  }
+
+  /* 点发音键走这里：念的就是点的这一条 */
+  function say(kind){
+    if(!cur) return;
+    start(kind);
+  }
+
+  /* 只念这一条：听写时要的是这个词，不是词加句 */
+  function play(kind){
+    if(!cur) return;
+    start(kind, undefined, true);
+  }
+
+  /* 复读点亮那一下的演示：眼前这条连念 REP_TIMES 遍 */
+  function sample(){
+    if(!cur) return;
+    start(lastKind, REP_TIMES, true);
+  }
+
+  /* 复读关掉：正在念的这一遍念完就收，后面的重复与配对都不再放 */
+  function once(){
+    const j = job;
+    if(!j) return;
+    const it = j.q[j.i];
+    if(!it) return;
+    if(it.need > j.done + 1) it.need = j.done + 1;
+    j.q = j.q.slice(0, j.i + 1);
+  }
+
+  function stop(){
+    token += 1;
+    clearGap();
+    job = null;
+    if(el){ try { el.pause(); } catch(e){} }
+    paint('w', false); paint('s', false);
+  }
+
+  function setRate(v){
+    ASET.rate = v; saveA();
+    if(el) el.playbackRate = v;
+  }
+
+  /* 胶囊小卡里点听：念的是小卡上的这个词，不是卡里的当前词 */
+  function of(kind, w){
+    if(!w) return;
+    start(kind, undefined, true, w);
+  }
+
+  return { say:say, play:play, of:of, sample:sample, once:once, stop:stop, setRate:setRate, lastKind:() => lastKind };
+})();
+
+/* 只刷发音条的标签与高亮，不重画整张卡（免得音素展开状态被清掉） */
+function paintAudioBar(){
+  const host = document.getElementById('cardHost');
+  if(!host) return;
+  const r = host.querySelector('.ratecap:not(.vcap)');
+  if(r){ r.textContent = rateLabel(ASET.rate); r.classList.toggle('on', ASET.rate !== 1); }
+  const v = host.querySelector('.ratecap.vcap');
+  if(v){ v.textContent = VOICE_SHORT[ASET.voice]; v.classList.toggle('on', ASET.voice !== 'alt'); }
+  repBtn();
+}
+
+/* 账本面板底部那颗音色胶囊：功能与以前一模一样，只是换了个地方放 */
+function paintVoiceCap(){
+  const b = document.getElementById('voiceCap');
+  if(!b) return;
+  b.textContent = '音色：' + VOICE_LABEL[ASET.voice];
+  b.classList.toggle('on', ASET.voice !== 'alt');
+}
+
+/* 复读开关：点亮这一下先拿眼前这条演示一遍，听得出来才叫开关 */
+function repToggle(){
+  ASET.rep = !ASET.rep;
+  saveA();
+  paintAudioBar();
+  if(ASET.rep) AU.sample();
+  else AU.once();      // 关掉：这一遍念完就收
+}
+
+function audioBarHTML(){
+  return `<div class="audio">
+    <button class="abtn" data-a="w" title="听单词（P）：只念这个单词">${SPK_ICON}单词</button>
+    <button class="abtn" data-a="s" title="听例句（O）：只念这个例句">${SPK_ICON}例句</button>
+    <button class="abtn${DICT.on ? ' on' : ''}" data-a="dict" title="听写（D）：念一遍，把这个词拼出来">${PEN_ICON}听写</button>
+    <button class="atog${ASET.rep ? ' on' : ''}" data-t="rep" title="复读：点亮后每条都连念 ${repTimes()} 遍（点亮这一下先演示一次）（L）">复读×${repTimes()}</button>
+  </div>`;
+}
+
+/* ================= 听写 =================
+   念一个词，你把它拼出来。
+   判分只比字母、大小写不管；少打多打错位都能标出来。
+   拼对＝记「认识」（三档最高），拼错＝记「不认识」（降到最低档），
+   错打的字母顺手攒进 vm.typo.v1，以后能看出总栽在哪一位。
+   听写开着的时候，键盘只认字母 / Backspace / Enter / Esc，
+   1 2 3、空格、e、/、P、O、L 这些原有快捷键全部让路。
+==========================================*/
+const TYPOK = 'vm.typo.v1';
+let typo = ls.get(TYPOK, {});
+const saveT = () => ls.set(TYPOK, typo);
+
+const DICT = { on:false, ans:'', res:null, msg:'' };
+
+/* 只留字母，判分与输入框共用同一把尺子 */
+function normAnswer(s){
+  return String(s == null ? '' : s).replace(/[^a-zA-Z]/g, '').toLowerCase();
+}
+
+/* 纯函数：逐字母比，一位一位给状态
+   state: ok 打对 / wrong 打错 / missing 少打 / extra 多打
+   i 从 0 数，ch 是这一位该有的字母（多打的位置是打进来的字母） */
+function diff(answer, target){
+  const a = normAnswer(answer);
+  const t = normAnswer(target);
+  const marks = [];
+  let bad = 0;
+  for(let i = 0; i < t.length; i++){
+    const want = t[i];
+    if(i >= a.length){
+      marks.push({ i:i, ch:want, got:'', want:want, state:'missing' }); bad++;
+      continue;
+    }
+    const got = a[i];
+    if(got === want) marks.push({ i:i, ch:want, got:got, want:want, state:'ok' });
+    else { marks.push({ i:i, ch:want, got:got, want:want, state:'wrong' }); bad++; }
+  }
+  for(let i = t.length; i < a.length; i++){
+    marks.push({ i:i, ch:a[i], got:a[i], want:'', state:'extra' }); bad++;
+  }
+  return {
+    ok: !!t && a === t,
+    marks: marks,
+    extra: a.slice(t.length),   // 多打出来的那一截
+    answer: a,
+    target: t,
+    bad: bad
+  };
+}
+
+function maskWord(w){
+  const n = normAnswer(w).length || 1;
+  const out = [];
+  for(let i = 0; i < n; i++) out.push('_');
+  return out.join(' ');
+}
+
+function marksHTML(r){
+  return r.marks.map(m => {
+    if(m.state === 'ok') return `<span class="c-ok">${esc(m.got)}</span>`;
+    if(m.state === 'wrong') return `<span class="c-bad">${esc(m.got || '·')}</span>`;
+    if(m.state === 'extra') return `<span class="c-extra">${esc(m.got)}</span>`;
+    return '';   // missing：这一位没打出来，空着
+  }).join('');
+}
+
+function targetHTML(r){
+  return r.marks.map(m => {
+    if(m.state === 'ok') return `<span class="c-ok">${esc(m.want)}</span>`;
+    if(m.state === 'wrong') return `<span class="c-bad">${esc(m.want)}</span>`;
+    if(m.state === 'missing') return `<span class="c-miss">${esc(m.want)}</span>`;
+    return '';
+  }).join('');
+}
+
+function diffTipHTML(r){
+  const bad = r.marks.filter(m => m.state !== 'ok');
+  if(!bad.length) return '';
+  const parts = bad.map(m => {
+    const pos = m.i + 1;
+    if(m.state === 'wrong') return `第 ${pos} 位该打「${esc(m.want)}」，打成了「${esc(m.got)}」`;
+    if(m.state === 'missing') return `第 ${pos} 位漏了「${esc(m.want)}」`;
+    return `第 ${pos} 位多打「${esc(m.got)}」`;
+  });
+  return `<div class="dtip">${parts.join('；')}</div>`;
+}
+
+function dictHTML(w){
+  const r = DICT.res;
+  const warn = DICT.msg ? `<div class="dwarn">${esc(DICT.msg)}</div>` : '';
+  if(r){
+    return `<div class="dict" id="dictBox">
+      <div class="dres">
+        <div class="dlab">你的答案</div>
+        <div class="dline">${marksHTML(r) || '<span class="c-miss">（空）</span>'}</div>
+        <div class="dlab">正确拼写</div>
+        <div class="dline">${targetHTML(r)}</div>
+        <div class="dverdict ${r.ok ? 'good' : 'bad'}">${
+          r.ok ? '拼对了 · 记成「认识」' : '拼错了 · 记成「不认识」，降到最低档'
+        }</div>
+        ${diffTipHTML(r)}
+      </div>
+      ${warn}
+      <div class="drow">
+        <button class="pri" data-d="next">下一个</button>
+        <button data-d="again">重听</button>
+        <button data-d="retry">再拼一次</button>
+        <button data-d="exit">退出（Esc）</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="dict" id="dictBox">
+    <div class="dhint"><span>听发音，把这个词拼出来</span><span class="dnum">${normAnswer(w.w).length} 个字母</span></div>
+    <input id="dictIn" type="text" value="${esc(DICT.ans)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="latin" placeholder="打字母…">
+    <div class="drow">
+      <button class="pri" data-d="submit">判分（Enter）</button>
+      <button data-d="again">重听</button>
+      <button data-d="skip">跳过</button>
+      <button data-d="exit">退出（Esc）</button>
+    </div>
+    ${warn}
+  </div>`;
+}
+
+/* 把听写区画进卡片：不动整张卡，只换 slot 里的内容 */
+function mountDict(){
+  const slot = document.getElementById('dictSlot');
+  if(!slot || !cur) return;
+  slot.innerHTML = dictHTML(merged(cur));
+  const inp = document.getElementById('dictIn');
+  if(!inp) return;
+  inp.addEventListener('input', () => {
+    const clean = String(inp.value).replace(/[^a-zA-Z]/g, '');
+    if(clean !== inp.value) inp.value = clean;
+    DICT.ans = clean;
+    if(DICT.msg){ DICT.msg = ''; const w = document.querySelector('#dictBox .dwarn'); if(w) w.remove(); }
+  });
+  inp.focus();
+  try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch(e){}
+}
+
+function dictBegin(play){
+  if(!cur) return;
+  DICT.on = true;
+  DICT.ans = '';
+  DICT.res = null;
+  DICT.msg = '';
+  renderCard();
+  if(play !== false) AU.play('w');
+}
+
+function dictStart(){ dictBegin(true); }
+
+function dictExit(){
+  if(!DICT.on) return;
+  DICT.on = false;
+  DICT.ans = '';
+  DICT.res = null;
+  DICT.msg = '';
+  AU.stop();
+  renderCard();
+}
+
+/* 错打的字母与位置，按词累计 */
+function recordTypo(word, r){
+  const k = normAnswer(word);
+  if(!k) return;
+  const it = typo[k] || { count:0, typos:[] };
+  it.count = (it.count || 0) + 1;
+  r.marks.forEach(m => {
+    if(m.state === 'ok') return;
+    it.typos.push({ pos: m.i + 1, got: m.got || '', want: m.want || '', st: m.state });
+  });
+  if(it.typos.length > 60) it.typos = it.typos.slice(-60);
+  typo[k] = it;
+  saveT();
+}
+
+function dictSubmit(){
+  if(!DICT.on || !cur) return;
+  const inp = document.getElementById('dictIn');
+  const raw = inp ? inp.value : DICT.ans;
+  DICT.ans = raw;
+  const w = merged(cur);
+  /* 空着直接回车：不判、不记进度，给句话让他接着来 */
+  if(!normAnswer(raw)){
+    DICT.res = null;
+    DICT.msg = '还没打字母呢。听不清就点「重听」，不想拼就点「跳过」。';
+    mountDict();
+    return;
+  }
+  const r = diff(raw, w.w);
+  DICT.res = r;
+  DICT.msg = '';
+  /* 联动三档：拼对 = 认识（k=2），拼错 = 不认识（k=0，box 归零） */
+  const id = cur.w.toLowerCase();
+  rate(cur.w, r.ok ? 2 : 0);
+  refreshRow(id);
+  if(!r.ok) recordTypo(w.w, r);
+  if(inp) inp.blur();
+  mountDict();
+  const nx = document.querySelector('#dictBox [data-d="next"]');
+  if(nx) nx.focus();
+}
+
+/* 给外部自动化验收用：判分是纯函数，可以脱离界面直接调 */
+window.VM_DICT = {
+  diff: diff,
+  mask: maskWord,
+  start: dictStart,
+  exit: dictExit,
+  submit: dictSubmit,
+  type: v => {
+    const inp = document.getElementById('dictIn');
+    if(inp){ inp.value = String(v == null ? '' : v).replace(/[^a-zA-Z]/g, ''); DICT.ans = inp.value; }
+    return DICT.ans;
+  },
+  state: () => ({
+    on: DICT.on,
+    answer: DICT.ans,
+    msg: DICT.msg,
+    res: DICT.res ? JSON.parse(JSON.stringify(DICT.res)) : null
+  }),
+  typo: () => ls.get(TYPOK, {})
+};
+
+/* ================= 音素库 =================
+   说明文字不写死在这里了，全部放在 data/phon.js，随时可改。
+   页面上点开一个音素，右上角有「改」，能当场写——改完存在本机，盖过文件。
+   t: v 元音 / c 辅音 / s 重音
+==========================================*/
+const MINE_PHON = (function(){
+  try { return JSON.parse(localStorage.getItem('vm_phon') || '{}') || {}; } catch(e){ return {}; }
+})();
+
+/* 说明文字的真实来源：data/phon.js（可改） + 本机改过的（优先） */
+const PHON = (function(){
+  const out = {};
+  (window.PHON_PARTS || []).forEach(p => {
+    const it = (p && p.items) || {};
+    Object.keys(it).forEach(k => {
+      out[k] = { t: it[k].t || 'c', d: it[k].d || '' };
+    });
+  });
+  Object.keys(MINE_PHON).forEach(k => {
+    out[k] = { t: (out[k] && out[k].t) || 'c', d: MINE_PHON[k] };
+  });
+  return out;
+})();
+
+function savePhon(sym, text){
+  if(text == null || !text) delete MINE_PHON[sym];
+  else MINE_PHON[sym] = text;
+  try { localStorage.setItem('vm_phon', JSON.stringify(MINE_PHON)); } catch(e){}
+  if(PHON[sym]){
+    if(text == null || !text) PHON[sym].d = window.PHON_PARTS && (function(){
+      let d = '';
+      (window.PHON_PARTS||[]).forEach(pp => { if(pp.items && pp.items[sym]) d = pp.items[sym].d || d; });
+      return d;
+    })() || PHON[sym].d;
+    else PHON[sym].d = text;
+  } else if(text){
+    PHON[sym] = { t:'c', d:text };
+  }
+}
+/* ================= 音素两级说明（阶段1 样机） =================
+   第一层：容易听错（一对对比词）→ 同一个音（同类词）→ 发音技巧
+   第二层：位置说明（自动算）+ 拼读规律
+   数据放在 data/phon2.js；没配的音素继续走老面板，互不影响。
+   手改：技巧句存 vm_phon（与老面板同一把钥匙，改一次两边都认）；
+        拼读规律单独存 vm.phon2.v1，随时能还原。
+============================================================ */
+const P2 = (function(){
+  const out = {};
+  (window.PHON2_PARTS || []).forEach(p => {
+    const it = (p && p.items) || {};
+    Object.keys(it).forEach(k => { out[k] = it[k] || {}; });
+  });
+  return out;
+})();
+function hasP2(sym){ return !!P2[sym]; }
+
+const R2KEY = 'vm.phon2.v1';
+let R2 = (function(){ try { return JSON.parse(localStorage.getItem(R2KEY) || '{}') || {}; } catch(e){ return {}; } })();
+
+/* 拼读规律：本机改过就用本机的，没改过用文件里的 */
+function ruleOrigin(sym){
+  const it = P2[sym];
+  return (it && it.rule) || '';
+}
+function ruleMine(sym){
+  return !!(R2[sym] && typeof R2[sym].rule === 'string');
+}
+function ruleOf(sym){
+  return ruleMine(sym) ? R2[sym].rule : ruleOrigin(sym);
+}
+function saveRule(sym, text){
+  const o = R2[sym] || {};
+  if(text == null || !text) delete o.rule;
+  else o.rule = text;
+  if(Object.keys(o).length) R2[sym] = o; else delete R2[sym];
+  try { localStorage.setItem(R2KEY, JSON.stringify(R2)); } catch(e){}
+}
+
+/* 一个词该按哪个音色先念：词库里有就按它的奇偶，库外词先女声 */
+function wordAudioURLs(word){
+  const k = String(word || '').toLowerCase();
+  const hit = BY_W[k];
+  const pref = hit ? voiceOf(hit) : 'f';
+  const order = pref === 'f' ? ['f','m'] : ['m','f'];
+  return order.map(t => 'audio/w/' + k + '_' + t + '.mp3');
+}
+
+/* 气泡里点词就念它：单念一个词，不念例句 */
+const PV = (function(){
+  let el = null, seq = 0;
+  function stop(){
+    seq++;
+    if(el){ try { el.pause(); } catch(e){} el = null; }
+  }
+  return {
+    play(word){
+      AU.stop();
+      stop();
+      const urls = wordAudioURLs(word);
+      const my = seq;
+      el = new Audio();
+      el.preload = 'auto';
+      let k = 0;
+      const one = () => {
+        if(my !== seq || k >= urls.length) return;
+        el.src = audioURL(urls[k++]);
+        el.playbackRate = ASET.rate;
+        const p = el.play();
+        if(p && p.catch) p.catch(one);
+      };
+      el.onerror = () => one();
+      one();
+    },
+    stop
+  };
+})();
+
+/* 这个音在本词里站哪儿（老面板与新气泡共用同一套算法） */
+function phonWhere(w, idx){
+  const a = analyzeIPA(w.ipa);
+  const it = a.items[idx];
+  if(!it) return '';
+  const total = (String(w.syl||'').split('·').filter(Boolean).length) || a.sylCount;
+  const at = Math.min(it.syl, total);
+  if(it.kind === 's') return `重音砸在第 ${at} 个音节上，这一节读得最响、最高。`;
+  if(it.kind === 's2') return `第 ${at} 个音节是次重音，比旁边稍用点力，但没 ˈ 那么重。`;
+  const onStress = (it.syl === a.mainSyl);
+  return `本词 ${total} 个音节，它在第 ${at} 个，` +
+    (onStress ? '这一节正好是重读的那节，它跟着那口气一起出去。' : '这一节不重读，轻轻带过去。');
+}
+
+/* ===== 气泡本体 ===== */
+const BUB_MS = 8000;
+let bub = { sym:'', idx:-1, word:null, timer:null, open2:false };
+
+function bubHost(){
+  let h = document.getElementById('pBub');
+  if(!h){
+    h = document.createElement('div');
+    h.id = 'pBub';
+    h.className = 'pbub';
+    document.body.appendChild(h);
+  }
+  return h;
+}
+
+/* 一对词里"不一样的那个音"单独点亮：mark 就是要标的那截，点它听见这个词 */
+function ipaChip(word, ipa, mark){
+  const raw = String(ipa || '').replace(/^\/+|\/+$/g, '').trim();
+  if(!raw) return '';
+  const m = String(mark || '');
+  /* ɡ(U+0261) 与 g 只是字形不同，互相也认，避免同音标两种写法点不亮 */
+  const norm = s => s.replace(/ɡ/g, 'g');
+  let at = m ? raw.indexOf(m) : -1;
+  if(m && at < 0) at = norm(raw).indexOf(norm(m));
+  if(at < 0) return `<span class="pbipa">/${esc(raw)}/</span>`;
+  return `<span class="pbipa">/${esc(raw.slice(0, at))}<span class="pipa" data-pb="sayw" data-w="${esc(word)}" title="点一下听 ${esc(word)} 里的这个音">${esc(m)}</span>${esc(raw.slice(at + m.length))}/</span>`;
+}
+
+/* 对比词标签：2 个＝一对，4 个＝两对，其余按个数说 */
+function pairLab(n){
+  n = Number(n) || 0;
+  if(n <= 2) return '一对';
+  if(n % 2 === 0) return (n === 4 ? '两' : (n / 2)) + '对';
+  return n + ' 个';
+}
+
+/* 轻提示：收词、已有词这类一句话回执，不弹窗、不挡视线 */
+function vmToast(msg){
+  let t = document.getElementById('vmToast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'vmToast';
+    t.className = 'vmtoast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(vmToast._t);
+  vmToast._t = setTimeout(() => t.classList.remove('on'), 1700);
+}
+
+function p2row(word, cn, ipa, mark){
+  const k = String(word || '').toLowerCase();
+  const hit = BY_W[k];
+  const c = cn || (hit && hit.cn) || '';
+  const inLib = !!(overrides[k] && overrides[k].custom);   // 词表里有的词不算收过，收进词库才算
+  return `<div class="pbrow">
+    <button class="pbsay" data-pb="say" data-w="${esc(word)}">
+      <i>${esc(word)}</i>${ipaChip(word, ipa, mark)}${c ? `<u>${esc(c)}</u>` : ''}
+      <s>点听</s>
+    </button>
+    <em class="pbkeep${inLib ? ' done' : ''}"${inLib ? '' : ' data-pb="keep"'} data-w="${esc(word)}"
+      data-cn="${esc(c)}" data-ipa="${esc(String(ipa || ''))}"
+      title="${inLib ? '词库里已经有这个词' : '把这个词收进词库'}">${inLib ? '已在库' : '＋收'}</em>
+  </div>`;
+}
+
+/* ===== P1.5 一句话结论：一句 ≤20 字、只说嘴怎么动、不写专业名词 =====
+   长文（发音技巧/记法/步位）仍在 data/*.js 里，气泡不再整段塞入。 */
+const ONELINE = {
+  'iː':'「衣」拖长，嘴角朝两边',
+  'i':'比「衣」短，一碰就走',
+  'ɪ':'比「衣」松半口，短而含糊',
+  'e':'「诶」平放，下巴轻放',
+  'æ':'嘴张一指宽，夹在啊和诶之间',
+  'ɑː':'「啊」张到最大，拖最长',
+  'ɒ':'短一声「哦」，立刻收住',
+  'ɔː':'圆着嘴把「哦」拖住',
+  'ʌ':'松短的「啊」，不亮不响',
+  'ə':'最省力的一声「呃」',
+  'ɜː':'舌头摊平，「呃」拖长',
+  'uː':'撮圆往前顶，「乌」拖住',
+  'ʊ':'短的「乌」，嘴唇松一点',
+  'aɪ':'「啊」滑到「衣」，像「爱」',
+  'eɪ':'「诶」滑到「衣」，嘴一路收窄',
+  'ɔɪ':'「哦」滑到「衣」',
+  'aʊ':'「啊」滑到「乌」，就是「奥」',
+  'əʊ':'「呃」滑到「乌」，像「欧」',
+  'ɪə':'先「衣」后「呃」，连着滑',
+  'eə':'先「诶」后「呃」，别停顿',
+  'ʊə':'先「乌」后「呃」，常读成「哦」',
+  'a':'短促一声「啊」，随意点',
+  'p':'双唇一碰就放开，只出气',
+  'b':'跟 p 同位置，嗓子要抖',
+  't':'舌尖顶上牙床一弹，只出气',
+  'd':'跟 t 同位置，嗓子要抖',
+  'k':'舌根顶住再放开，像咳前一下',
+  'g':'跟 k 同位置，嗓子要抖',
+  'f':'上牙咬下唇吹气，嗓子不抖',
+  'v':'跟 f 同位置，但嗓子要抖',
+  'θ':'舌尖探出牙缝漏气，别害羞',
+  'ð':'跟 θ 同位置，舌头要真伸',
+  's':'舌尖近上牙床，细气挤出来',
+  'z':'跟 s 同位置，嗓子要抖',
+  'ʃ':'撅嘴一声「嘘」，别读成「西」',
+  'ʒ':'跟 ʃ 同位置，嗓子要抖',
+  'h':'光呵一口气，别磨出声',
+  'tʃ':'「吃」再短一点，先堵再嘘',
+  'dʒ':'「知」再短一点，嗓子要抖',
+  'm':'闭上嘴，声音从鼻子出来',
+  'n':'舌尖顶上牙床，声音走鼻子',
+  'ŋ':'舌根堵住，声音全走鼻子',
+  'l':'舌尖顶住别松，声音走两边',
+  'r':'舌尖翘起，但哪儿都别碰',
+  'j':'「衣」飞快带过，马上接后面',
+  'w':'「乌」飞快带过，嘴先撮圆',
+  'ˈ':'紧跟这一节抬高、加力',
+  'ˌ':'稍用点力，远没 ˈ 那么重'
+};
+/* 兜底：一个字都没配的音素，把技巧句切到第一个句号/逗号，仍压到 20 字内 */
+function oneLineOf(sym){
+  const s = ONELINE[sym];
+  if(s) return s;
+  const raw = (P2[sym] && P2[sym].tip) || (PHON[sym] ? PHON[sym].d : '') || '';
+  const cut = String(raw).split(/[。；;，,]/)[0].trim();
+  return cut.length > 20 ? cut.slice(0, 20) : cut;
+}
+/* 第三层：一行极轻的小注——只说它在词里站哪儿，不写步位长文 */
+function bubNote(w, idx, a, it){
+  if(!it) return '';
+  if(it.kind === 's') return `重音符号 · 砸在第 ${it.syl} 个音节`;
+  if(it.kind === 's2') return `次重音 · 第 ${it.syl} 个音节`;
+  const onStress = (it.syl === a.mainSyl);
+  return `第 ${idx + 1}/${a.items.length} 个音 · ${onStress ? '在重读那节' : '不重读，轻带过'}`;
+}
+
+function bubHTML(w, idx){
+  const a = analyzeIPA(w.ipa);
+  const it = a.items[idx];
+  if(!it) return '';
+  const sym = it.s;
+  const d = P2[sym] || {};
+
+  /* 第一层：符号 + 一句人话结论（≤20 字），右上角只留一个收起 */
+  let h = `<div class="pbhd"><b>${esc(sym)}</b>` +
+    `<span class="pbline">${esc(oneLineOf(sym))}</span></div>` +
+    `<em class="pbclose" data-pb="close" title="收起">×</em>`;
+
+  /* 第二层：对比词优先、其次同类词，去重后最多 3 行，每行「词 + 音标 + 中文 + 点听」 */
+  const cmp = (Array.isArray(d.cmp) ? d.cmp : []).filter(x => x && x.w);
+  const same = (Array.isArray(d.same) ? d.same : []).map(x => {
+    if(typeof x === 'string'){
+      const hit = BY_W[String(x).toLowerCase()];
+      return { w: x, cn: hit ? (hit.cn || hit.read || '') : '', ipa: hit ? (hit.ipa || '') : '', ext: !hit };
+    }
+    return x;
+  }).filter(x => x && x.w);
+  const seen = {}, pick = [];
+  cmp.concat(same).forEach(x => {
+    const k = String(x.w).toLowerCase();
+    if(seen[k] || pick.length >= 3) return;
+    seen[k] = 1; pick.push(x);
+  });
+  if(pick.length){
+    h += `<div class="pbws">` + pick.map(x => {
+      const k = String(x.w).toLowerCase();
+      const inLib = !!(overrides[k] && overrides[k].custom);
+      const row = `<button class="pbw" data-pb="say" data-w="${esc(x.w)}" title="点一下听 ${esc(x.w)}">` +
+        `<i>${esc(x.w)}</i>${ipaChip(x.w, x.ipa, x.d || sym)}` +
+        (x.cn ? `<u>${esc(x.cn)}</u>` : '') + `<s>点听</s></button>`;
+      if(inLib) return `<div class="pbwr">${row}</div>`;
+      return `<div class="pbwr">${row}<em class="pbadd" data-pb="keep" data-w="${esc(x.w)}"` +
+        ` data-cn="${esc(x.cn || '')}" data-ipa="${esc(String(x.ipa || ''))}" title="把这个词收进词库">＋</em></div>`;
+    }).join('') + `</div>`;
+  }
+
+  /* 第三层：一行极轻小字注，没有就不显示 */
+  const note = bubNote(w, idx, a, it);
+  if(note) h += `<div class="pbn">${esc(note)}</div>`;
+  return h;
+}
+
+function bubEditHTML(sym, kind){
+  const curTxt = (kind === 'tip') ? (PHON[sym] ? PHON[sym].d : '') : ruleOf(sym);
+  return `<div class="pbh"><b>${esc(sym)}</b><em class="pbclose" data-pb="close" title="收起">×</em></div>
+    <div class="pbsec">
+      <span class="pblab">${kind === 'tip' ? '发音技巧' : '拼读规律'}</span>
+      <textarea id="pbEdit" rows="4" spellcheck="false">${esc(curTxt)}</textarea>
+      <div class="prow">
+        <button class="pri" data-pb="save" data-k="${kind}">保存</button>
+        <button data-pb="reset" data-k="${kind}">还原原话</button>
+        <button data-pb="cancel" data-k="${kind}">取消</button>
+      </div>
+      <span style="display:block;margin-top:6px;font-size:11.5px;color:var(--ink3)">一句话说清嘴怎么摆、跟中文差哪；不写专业名词。</span>
+    </div>`;
+}
+
+function bubPlace(){
+  const h = document.getElementById('pBub');
+  const chip = document.querySelector('.pc.on');
+  if(!h || !chip) return;
+  const r = chip.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  h.style.visibility = 'hidden';
+  h.classList.add('on');
+  /* 先按视口给上限再量高：矮屏/窄屏时气泡不会顶出屏幕，放不下就整体可滚 */
+  h.style.maxHeight = (vh - 24) + 'px';
+  const bw = h.offsetWidth, bh = h.offsetHeight;
+  /* 是否真放不下：先按住滚动条量一遍（滚动条一出现会挤窄内容、反过来又多折一行，来回跳） */
+  h.style.overflowY = 'hidden';
+  /* +7 是给小箭头留的：箭头挂在气泡外侧 6.5px，会被算进 scrollHeight，别把它当溢出 */
+  const over = h.scrollHeight > h.offsetHeight + 7;
+  h.style.overflowY = '';
+  h.classList.toggle('tight', over);
+  let left = r.left + r.width / 2 - bw / 2;
+  /* 左右各留 16px：窄屏气泡收在视口内，不贴边、不铺满 */
+  left = Math.max(16, Math.min(left, vw - bw - 16));
+  let top = 0, above = false;
+  /* 避让：别压在单词行、发音条上，更不能盖住所点的那个格子 */
+  const obs = [];
+  document.querySelectorAll('.word, .abar').forEach(el => {
+    const b = el.getBoundingClientRect();
+    if(b.height > 0 && b.width > 0) obs.push({ r: b, k: 1 });
+  });
+  /* 所点格子权重最高：气泡宁可整体挪开，也不许把它埋掉 */
+  obs.push({ r: r, k: 3 });
+  const overlap = (t, l) => {
+    let s = 0;
+    obs.forEach(o => {
+      const b = o.r;
+      const ow = Math.min(l + bw, b.right) - Math.max(l, b.left);
+      const oh = Math.min(t + bh, b.bottom) - Math.max(t, b.top);
+      if(ow > 0 && oh > 0) s += ow * oh * o.k;
+    });
+    return s;
+  };
+  /* 落点：优先紧贴格子下方；下方塞不下就整块翻到上方；上下都塞不下才夹进视口，挑遮得少的那边 */
+  const cands = [];
+  if(r.bottom + 9 + bh <= vh - 8) cands.push({ top: r.bottom + 9, up: false });
+  if(r.top - 9 - bh >= 8) cands.push({ top: r.top - 9 - bh, up: true });
+  if(!cands.length){
+    cands.push({ top: Math.max(8, Math.min(r.bottom + 9, vh - bh - 8)), up: false });
+    cands.push({ top: Math.max(8, Math.min(r.top - 9 - bh, vh - bh - 8)), up: true });
+  }
+  let best = cands[0], bestS = Infinity;
+  cands.forEach(c => {
+    const s = overlap(c.top, left);
+    if(s < bestS){ bestS = s; best = c; }
+  });
+  top = best.top; above = best.up;
+  h.style.left = left + 'px';
+  h.style.top = top + 'px';
+  h.classList.toggle('above', above);
+  h.style.setProperty('--ax', Math.max(14, Math.min(r.left + r.width / 2 - left, bw - 14)) + 'px');
+  h.style.visibility = '';
+}
+
+function bubEditing(){
+  const h = document.getElementById('pBub');
+  return !!(h && h.querySelector('#pbEdit'));
+}
+function bubArm(){
+  bubDisarm();
+  bub.timer = setTimeout(() => { if(!bubEditing()) closeBub(); }, BUB_MS);
+}
+function bubDisarm(){
+  if(bub.timer){ clearTimeout(bub.timer); bub.timer = null; }
+}
+
+function closeBub(){
+  bubDisarm();
+  PV.stop();
+  const h = document.getElementById('pBub');
+  if(h){ h.classList.remove('on'); h.classList.remove('above'); h.innerHTML = ''; }
+  document.querySelectorAll('.pc.on').forEach(c => c.classList.remove('on'));
+  bub = { sym:'', idx:-1, word:null, timer:null, open2:false };
+}
+
+function openBub(w, idx, chip){
+  const a = analyzeIPA(w.ipa);
+  const it = a.items[idx];
+  if(!it) return;
+  if(bub.sym && bub.sym !== it.s) bub.open2 = false;
+  bub.word = w; bub.idx = idx; bub.sym = it.s;
+  const h = bubHost();
+  document.querySelectorAll('.pc.on').forEach(c => c.classList.remove('on'));
+  if(chip) chip.classList.add('on');
+  h.innerHTML = bubHTML(w, idx);
+  bubPlace();
+  bubArm();
+}
+
+/* ============================================================
+ * P2-① 拆解件助记：构件本身就是一个能独立用的英文词，才在它后面加一颗极轻的「?」
+ *   判定只看 data/wordjudge.js（现有词典/词表里查得到的词条），查不到就不加；
+ *   点开＝紧跟着这一行就地展开一行助记，再点收起。不跳页、不弹全屏。
+ * ============================================================ */
+const MTG_MARK = '▾';
+
+/* 构件去掉前后连字符后，能在判定表里查到才算「本身是个词」；构件等于整词时没得解释，不加 */
+function mtgJudge(form, id){
+  const J = (window.WORD_JUDGE && window.WORD_JUDGE.items) || {};
+  const f = String(form || '').toLowerCase().replace(/^-+|-+$/g, '');
+  if(!f) return null;
+  if(f === String(id || '').toLowerCase()) return null;
+  return J[f] || null;
+}
+function mtgHTML(form, id){
+  const j = mtgJudge(form, id);
+  if(!j) return '';
+  const f = String(form || '').toLowerCase().replace(/^-+|-+$/g, '');
+  return `<em class="mtg" data-mtg="${esc(f)}" title="这个构件本身就是一个词，点一下看它为什么是这个意思">${MTG_MARK}</em>`;
+}
+function mtgNoteInner(form){
+  const j = mtgJudge(form, '');
+  if(!j) return '';
+  const f = String(form || '').toLowerCase().replace(/^-+|-+$/g, '');
+  return `<b>${esc(f)}</b> 本身是英文词「${esc(j.word)}」；${esc(j.why)}`;
+}
+function mtgNoteHTML(form, id){
+  if(!mtgJudge(form, id)) return '';
+  const f = String(form || '').toLowerCase().replace(/^-+|-+$/g, '');
+  return `<span class="mrow mtgnote" data-mtgnote="${esc(f)}">${mtgNoteInner(form)}</span>`;
+}
+/* 再点收起；同一块里只留一行展开，免得越点越长 */
+function mtgToggle(mk){
+  const row = mk.closest('.mrow');
+  if(!row) return;
+  const next = row.nextElementSibling;
+  if(next && next.classList && next.classList.contains('mtgnote')){
+    next.parentNode.removeChild(next);
+    mk.classList.remove('on');
+    return;
+  }
+  const box = row.closest('.mph');
+  if(box){
+    box.querySelectorAll('.mtgnote').forEach(x => x.parentNode.removeChild(x));
+    box.querySelectorAll('.mtg.on').forEach(x => x.classList.remove('on'));
+  }
+  const note = document.createElement('span');
+  note.className = 'mrow mtgnote';
+  note.setAttribute('data-mtgnote', mk.dataset.mtg || '');
+  note.innerHTML = mtgNoteInner(mk.dataset.mtg);
+  row.parentNode.insertBefore(note, row.nextSibling);
+  mk.classList.add('on');
+}
+
+/* ============================================================
+ * P2-② 同一颗胶囊：例句 / 单词表 / 词库三处共用
+ *   点胶囊 → 紧贴着弹一张小卡（和音标气泡同一套皮），不遮所点的词
+ * ============================================================ */
+const PC = { key:'', el:null };
+
+/* 例句里认词：先整词，再退一步认常见的 -s/-es/-ed/-ing/-ies 变形 */
+function pillKeyOf(tok){
+  const base = String(tok || '').toLowerCase().replace(/[’']s$/, '').replace(/[^a-z]/g, '');
+  if(!base || base.length < 2) return '';
+  const cands = [base];
+  const push = s => { if(s && s.length > 1 && cands.indexOf(s) < 0) cands.push(s); };
+  if(/ies$/.test(base)) push(base.slice(0, -3) + 'y');
+  if(/es$/.test(base)) push(base.slice(0, -2));
+  if(/s$/.test(base)) push(base.slice(0, -1));
+  if(/ed$/.test(base)){ push(base.slice(0, -2)); push(base.slice(0, -1)); if(/(.)\1ed$/.test(base)) push(base.slice(0, -3)); }
+  else if(/d$/.test(base)) push(base.slice(0, -1));
+  if(/ing$/.test(base)){ push(base.slice(0, -3)); push(base.slice(0, -3) + 'e'); if(/(.)\1ing$/.test(base)) push(base.slice(0, -4)); }
+  for(let i = 0; i < cands.length; i++){ if(BY_W[cands[i]]) return cands[i]; }
+  return '';
+}
+function pillHTML(text, key){
+  const k = String(key || text || '').toLowerCase();
+  return `<span class="pill" data-pill="${esc(k)}" title="点一下：听、收藏、进这个词">${esc(text)}</span>`;
+}
+/* 例句整句扫一遍：词表/词库里有的才包成胶囊，中文括号里的译文一个字不动 */
+function egPillHTML(text){
+  const s = String(text || '');
+  let out = '', last = 0;
+  s.replace(/[A-Za-z][A-Za-z'’-]*/g, (m, off) => {
+    const k = pillKeyOf(m);
+    if(k){
+      out += esc(s.slice(last, off)) + pillHTML(m, k);
+      last = off + m.length;
+    }
+    return m;
+  });
+  return out + esc(s.slice(last));
+}
+
+function pCardEl(){
+  let h = document.getElementById('pCard');
+  if(h) return h;
+  h = document.createElement('div');
+  h.id = 'pCard';
+  h.addEventListener('click', e => {
+    const b = e.target.closest('[data-pc]');
+    if(!b) return;
+    e.stopPropagation();
+    const a = b.dataset.pc;
+    const w = BY_W[PC.key];
+    if(a === 'say'){ if(w) AU.of('w', w); return; }         // 念小卡上的这个词
+    if(a === 'cpy'){
+      /* 单颗词复制：成了一份就地改字，被浏览器拦下就地摊成可选中文本 */
+      if(!w) return;
+      copyText(w.w).then(ok => {
+        if(ok){
+          b.textContent = '已复制'; b.classList.add('done');
+          setTimeout(() => { b.textContent = '复制这个词'; b.classList.remove('done'); }, 1600);
+          return;
+        }
+        const box = document.createElement('input');
+        box.className = 'pcsel'; box.readOnly = true; box.value = w.w;
+        box.setAttribute('spellcheck', 'false');
+        b.replaceWith(box);
+        try{ box.focus(); box.select(); }catch(err){}
+      });
+      return;
+    }
+    if(a === 'keep'){ pillKeep(PC.key); return; }
+    if(a === 'drop'){ pillDrop(PC.key); return; }
+    if(a === 'go'){
+      if(!w) return;
+      const anchor = PC.el;
+      closePillCard();
+      if(libShut) libShut();
+      go(w);                                                // 走现有的词详情页，不新造页面
+      if(anchor){ /* 列表里点完就收起侧栏，直接看卡 */ if(sideNarrow()) sideSet(false); }
+      return;
+    }
+  });
+  document.body.appendChild(h);
+  return h;
+}
+function pCardPlace(anchor){
+  const h = pCardEl();
+  const r = anchor.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const gap = 8;
+  h.style.visibility = 'hidden';
+  h.classList.add('on');
+  const bw = h.offsetWidth, bh = h.offsetHeight;
+  let left = r.left + r.width / 2 - bw / 2;
+  left = Math.max(12, Math.min(left, vw - bw - 12));
+  let top, above = false;
+  if(r.bottom + gap + bh <= vh - 8) top = r.bottom + gap;
+  else if(r.top - gap - bh >= 8){ top = r.top - gap - bh; above = true; }
+  else top = Math.max(8, Math.min(r.bottom + gap, vh - bh - 8));
+  h.style.left = left + 'px';
+  h.style.top = top + 'px';
+  h.classList.toggle('above', above);
+  h.style.setProperty('--ax', Math.max(14, Math.min(r.left + r.width / 2 - left, bw - 14)) + 'px');
+  h.style.visibility = '';
+  /* 万一被视口夹到压住胶囊，就整体翻到另一边，绝不遮所点的词 */
+  const c = h.getBoundingClientRect();
+  const ox = Math.min(c.right, r.right) - Math.max(c.left, r.left);
+  const oy = Math.min(c.bottom, r.bottom) - Math.max(c.top, r.top);
+  if(ox > 0 && oy > 0){
+    let alt = null;
+    if(r.top - gap - bh >= 8) alt = r.top - gap - bh;
+    else if(r.bottom + gap + bh <= vh - 8) alt = r.bottom + gap;
+    if(alt !== null){ h.style.top = alt + 'px'; h.classList.toggle('above', alt < r.top); }
+  }
+}
+function openPillCard(key, el){
+  const k = String(key || '').toLowerCase();
+  const w = BY_W[k];
+  const h = pCardEl();
+  if(!w){
+    h.innerHTML = `<div class="pchd"><b>${esc(k)}</b></div><div class="pcmean">这个词已经不在词表里了</div>`;
+  } else {
+    const m = merged(w);
+    const ipa = String(m.ipa || '').replace(/^\/+|\/+$/g, '').trim();
+    const cn = String(m.cn || '').trim() || '待补中文义';
+    const inLib = !!(overrides[k] && overrides[k].custom);
+    h.innerHTML = `<div class="pchd"><b>${esc(m.w)}</b>${ipa ? `<span class="pcipa">/${esc(ipa)}/</span>` : ''}</div>`
+      + `<div class="pcmean">${esc(cn)}</div>`
+      + `<div class="pcrow"><button class="pcb" data-pc="say">听一遍</button>`
+      + `<button class="pcb ${inLib ? 'mute' : 'pri'}" data-pc="${inLib ? 'drop' : 'keep'}">${inLib ? '移出词库' : '收进词库'}</button>`
+      + `<button class="pcb" data-pc="go">看这个词</button></div>`
+      + `<button class="pcmini" data-pc="cpy" title="只复制这一个词，粘到别处就行">复制这个词</button>`;
+  }
+  PC.key = k; PC.el = el;
+  document.querySelectorAll('.pill.on').forEach(x => x.classList.remove('on'));
+  if(el) el.classList.add('on');
+  if(el) pCardPlace(el);
+}
+function closePillCard(){
+  const h = document.getElementById('pCard');
+  if(h){ h.classList.remove('on'); h.classList.remove('above'); h.innerHTML = ''; }
+  document.querySelectorAll('.pill.on').forEach(x => x.classList.remove('on'));
+  PC.key = ''; PC.el = null;
+}
+function pCardRefresh(){
+  if(!PC.el) return;
+  if(!document.body.contains(PC.el)){ closePillCard(); return; }
+  openPillCard(PC.key, PC.el);
+}
+/* 收进词库 / 移出词库：走的还是 overrides 那本账，词库按钮上的数字跟着一起动 */
+function pillKeep(k){
+  const key = String(k || '').trim().toLowerCase();
+  if(!key) return;
+  if(overrides[key] && overrides[key].custom){ vmToast('词库里已经有 ' + key); return; }
+  const made = BY_W[key] ? BY_W[key] : newCard(key);
+  if(!made){ vmToast('这个词收不进来：' + key); return; }
+  const o = overrides[key] || (overrides[key] = {});
+  o.custom = true; o.mine = true;
+  o.pos = o.pos || '';
+  saveO();
+  absorbCustom();
+  renderList();            // 侧栏与「词库 N」一起刷新
+  paintLibBar();
+  if(typeof libRender === 'function') libRender();
+  vmToast((SRC_KEYS[key] || o.inlist) ? ('已收进词库：' + key) : ('已收进词库：' + key + '（在词库里点「导入」才进词表）'));
+  /* 侧栏 / 词库面板重渲染后旧胶囊节点已被替换：把卡片挂到新的那颗上，别直接收起 */
+  const again = document.querySelector('[data-pill="' + key + '"].pill');
+  if(again){ openPillCard(key, again); } else { pCardRefresh(); }
+}
+function pillDrop(k){
+  libRemove(String(k || '').toLowerCase());
+  pCardRefresh();
+}
+
+/* 胶囊与卡片在两条不同的委托链上，收口放在捕获阶段统一做 */
+document.addEventListener('click', e => {
+  if(!PC.el) return;
+  if(e.target.closest && (e.target.closest('#pCard') || e.target.closest('[data-pill]'))) return;
+  closePillCard();
+}, true);
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && PC.el) closePillCard(); });
+window.addEventListener('scroll', () => { if(PC.el) closePillCard(); }, true);
+window.addEventListener('resize', () => { if(PC.el) closePillCard(); });
+
+/* ============================================================
+ * 全部音素面板：48 个音素一屏查，不依赖当前词
+ * 数据仍来自 data/phon2.js（PHON2_PARTS[0].items）与 data/phon.js（PHON 技巧句）
+ * ============================================================ */
+const PALL = {
+  on: false,
+  sel: '',
+  edit: null,
+  VOWELS: ['iː','ɪ','e','æ','ɑː','ɒ','ɔː','ʊ','uː','ʌ','ɜː','ə','eɪ','aɪ','ɔɪ','aʊ','əʊ','ɪə','eə','ʊə'],
+  STRESS: ['ˈ','ˌ'],
+  data(){
+    const ps = window.PHON2_PARTS || [];
+    return (ps[0] && ps[0].items) ? ps[0].items : {};
+  },
+  keys(){
+    const d = this.data();
+    let ks = Object.keys(d);
+    if(!ks.length && typeof PHON !== 'undefined') ks = Object.keys(PHON);
+    return ks;
+  },
+  groups(){
+    const all = this.keys();
+    const vow = all.filter(k => this.VOWELS.includes(k));
+    const st  = all.filter(k => this.STRESS.includes(k));
+    const con = all.filter(k => !this.VOWELS.includes(k) && !this.STRESS.includes(k));
+    return [
+      { t:'元音 · ' + vow.length, ks: vow },
+      { t:'辅音 · ' + con.length, ks: con },
+      { t:'重音符号 · ' + st.length, ks: st }
+    ].filter(g => g.ks.length);
+  },
+  host(){
+    let m = document.getElementById('pAllMask');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'pAllMask'; m.className = 'pallmask';
+      m.addEventListener('click', () => PALL.close());
+      document.body.appendChild(m);
+    }
+    let h = document.getElementById('pAll');
+    if(!h){
+      h = document.createElement('div');
+      h.id = 'pAll'; h.className = 'pallbox';
+      document.body.appendChild(h);
+    }
+    return h;
+  },
+  gridHTML(){
+    return this.groups().map(g => `
+      <div class="pasec">
+        <span class="palab">${esc(g.t)}</span>
+        <div class="pagrid">${g.ks.map(k => {
+          const d = this.data()[k] || {};
+          const nCmp = (Array.isArray(d.cmp) ? d.cmp.length : 0);
+          const nSame = (Array.isArray(d.same) ? d.same.length : 0);
+          const noWord = !nCmp && !nSame && !this.STRESS.includes(k);
+          const weak = (typeof QLOG !== 'undefined') && QLOG.weak().indexOf(k) >= 0;
+          return `<button class="pacell${k === this.sel ? ' on' : ''}${weak ? ' weak' : ''}" data-pa="pick" data-s="${esc(k)}">${esc(k)}${noWord ? '<i class="nodot">没词</i>' : ''}</button>`;
+        }).join('')}</div>
+      </div>`).join('');
+  },
+  hipa(ipa, k){
+    const s = String(ipa || '');
+    if(!s) return '';
+    const kk = String(k || '');
+    let out = esc(s);
+    if(!kk) return out;
+    const cands = [kk];
+    if(kk === 'g') cands.push('ɡ');
+    if(kk === 'ɡ') cands.push('g');
+    for(const c of cands){
+      out = out.split(esc(c)).join(`<em class="phhit">${esc(c)}</em>`);
+    }
+    return out;
+  },
+  detHTML(){
+    const k = this.sel;
+    if(!k) return '';
+    const d = this.data()[k] || {};
+    const tip = (d.tip && String(d.tip).trim()) ? d.tip : ((typeof PHON !== 'undefined' && PHON[k]) ? PHON[k].d : '');
+    const cmp = (Array.isArray(d.cmp) ? d.cmp : []).filter(x => x && x.w);
+    const same = (Array.isArray(d.same) ? d.same : []).map(x => {
+      if(typeof x === 'string'){
+        const hit = BY_W[String(x).toLowerCase()];
+        return { w: x, cn: hit ? (hit.cn || hit.read || '') : '', ipa: hit ? (hit.ipa || '') : '', ext: !hit };
+      }
+      return x;
+    }).filter(x => x && x.w && !cmp.some(c => String(c.w).toLowerCase() === String(x.w).toLowerCase()));
+    let h = `<div class="padet">
+      <div class="padethd"><b>${esc(k)}</b><span>${this.VOWELS.includes(k) ? '元音' : (this.STRESS.includes(k) ? '重音符号' : '辅音')}</span></div>`;
+    if(cmp.length){
+      h += `<div class="pasec"><span class="palab">容易听错 · ${pairLab(cmp.length)}</span>` + cmp.map(x => `
+        <div class="pawrow" data-pa="say" data-w="${esc(x.w)}">
+          <span class="pw">${esc(x.w)}</span>
+          <span class="pi">${this.hipa(x.ipa, k)}</span>
+          <span class="pc2">${esc(x.cn || '')}</span>
+          <span class="spk">▸</span>
+        </div>`).join('') + `</div>`;
+    }
+    if(same.length){
+      h += `<div class="pasec"><span class="palab">同一个音 · 同类词</span>` + same.map(x => `
+        <div class="pawrow" data-pa="say" data-w="${esc(x.w)}">
+          <span class="pw">${esc(x.w)}</span>
+          <span class="pi">${this.hipa(x.ipa, k)}</span>
+          <span class="pc2">${esc(x.cn || '')}</span>
+          <span class="spk">▸</span>
+        </div>`).join('') + `</div>`;
+    }
+    if(!cmp.length && !same.length){
+      h += `<p class="paempty">${this.STRESS.includes(k) ? '它只标重音落在哪一节，本身不发音，所以没有对比词。' : '这个音暂时没配对比词，先看下面的发音技巧和拼读规律。'}</p>`;
+    }
+    /* 发音技巧 / 拼读规律：标题旁边留一个「改」，就地换成输入框（手改功能从气泡搬到这里） */
+    h += this.edSec(k, 'tip', '发音技巧', tip || '这个音还没写技巧句，点「改」自己补一句。',
+        Object.prototype.hasOwnProperty.call(MINE_PHON, k))
+      + this.edSec(k, 'rule', '拼读规律', ruleOf(k) || '这个音还没写拼读规律，点「改」自己补一句。',
+        ruleMine(k))
+      + `</div>`;
+    return h;
+  },
+  edSec(k, kind, label, txt, mine){
+    const ed = this.edit;
+    if(ed && ed.k === k && ed.kind === kind){
+      return `<div class="pasec"><span class="palab">${label}</span>
+        <textarea class="paedit" id="paEdit" rows="4" spellcheck="false">${esc(txt || '')}</textarea>
+        <div class="prow">
+          <button class="pri" data-pa="save" data-k="${kind}">保存</button>
+          <button data-pa="resetk" data-k="${kind}">还原原话</button>
+          <button data-pa="cancelk">取消</button>
+        </div></div>`;
+    }
+    return `<div class="pasec"><span class="palab">${label}${mine ? '<i class="pbmark">已手改</i>' : ''}` +
+      `<em class="pedit" data-pa="editk" data-k="${kind}">改</em></span>` +
+      `<p class="patip">${esc(txt || '')}</p></div>`;
+  },
+  render(){
+    const h = this.host();
+    const n = this.keys().length;
+    h.innerHTML = `
+      <div class="pallhd"><b>全部 ${n} 个音素</b><em data-pa="close" title="收起">×</em></div>
+      <div class="pallsub lit">点一个音素看它怎么念；「没词」指还没配对比词。</div>
+      <button class="pquizbtn" data-pa="qz-open">听辨小测 · 8 题 ›</button>
+      ${this.gridHTML()}
+      ${this.detHTML()}`;
+  },
+  open(){
+    this.on = true;
+    this.host();
+    if(!this.sel){
+      const ks = this.keys();
+      this.sel = ks.includes('iː') ? 'iː' : ks[0];
+    }
+    document.getElementById('pAllMask').classList.add('on');
+    this.render();
+    document.getElementById('pAll').classList.add('on');
+    const b = document.getElementById('pAll');
+    if(b) b.scrollTop = 0;
+  },
+  close(){
+    this.on = false;
+    const m = document.getElementById('pAllMask'), h = document.getElementById('pAll');
+    if(m) m.classList.remove('on');
+    if(h) h.classList.remove('on');
+  },
+  pick(sym){
+    this.sel = sym;
+    this.edit = null;
+    this.render();
+    const row = document.querySelector('#pAll .pacell.on');
+    if(row && row.scrollIntoView) row.scrollIntoView({block:'nearest'});
+  },
+  say(word){
+    if(!word) return;
+    PV.play(word);
+  },
+  act(a, el){
+    if(a.indexOf('qz-') === 0){ PQUIZ.act(a, el); return; }
+    if(a === 'close'){ this.close(); return; }
+    if(a === 'pick'){ this.pick(el.dataset.s || ''); return; }
+    if(a === 'say'){ this.say(el.dataset.w || ''); return; }
+    if(a === 'editk'){
+      this.edit = { k: this.sel, kind: el.dataset.k || 'tip' };
+      this.render();
+      const t = document.getElementById('paEdit');
+      if(t && t.focus) t.focus();
+      return;
+    }
+    if(a === 'cancelk'){ this.edit = null; this.render(); return; }
+    if(a === 'save' || a === 'resetk'){
+      const kind = el.dataset.k || 'tip';
+      const t = document.getElementById('paEdit');
+      const val = (a === 'resetk') ? '' : (t ? String(t.value || '').trim() : '');
+      if(kind === 'tip') savePhon(this.sel, val); else saveRule(this.sel, val);
+      this.edit = null;
+      this.render();
+      return;
+    }
+  }
+};
+window.VM_PALL = PALL;
+
+/* ============ 听辨小测的错题账本（本机保存，不上传） ============ */
+const QLOG = {
+  KEY: 'vm.quiz.v1',
+  all(){
+    try{ return JSON.parse(localStorage.getItem(this.KEY) || '{}') || {}; }catch(e){ return {}; }
+  },
+  add(k, ok){
+    if(!k) return;
+    const a = this.all();
+    const o = a[k] || { n: 0, bad: 0 };
+    o.n++;
+    if(!ok) o.bad++;
+    a[k] = o;
+    try{ localStorage.setItem(this.KEY, JSON.stringify(a)); }catch(e){}
+  },
+  weak(min){
+    min = min || 3;
+    const a = this.all(), out = [];
+    for(const k in a){
+      const o = a[k];
+      if(o && o.n >= min && o.bad / o.n >= 0.4) out.push(k);
+    }
+    return out;
+  },
+  clear(){ try{ localStorage.removeItem(this.KEY); }catch(e){} }
+};
+window.VM_QLOG = QLOG;
+
+/* ============ 听辨小测：随机音素，两词里挑含该音的那个 ============ */
+const PQUIZ = {
+  on:false, qs:[], idx:0, score:0, cur:null, answered:false, lastOK:null, timer:null,
+  data(){ return PALL.data(); },
+  has(ipa, k){
+    const s = String(ipa || '').replace(/ɡ/g, 'g');
+    return s.indexOf(String(k || '').replace(/ɡ/g, 'g')) >= 0;
+  },
+  pool(){
+    const d = this.data(), out = [];
+    for(const k of PALL.keys()){
+      if(PALL.STRESS.includes(k)) continue;
+      const raw = [].concat((d[k] || {}).cmp || [], (d[k] || {}).same || []);
+      const ws = raw.map(x => (typeof x === 'string' ? { w: x } : x)).filter(x => x && x.w && x.ipa);
+      const yes = ws.filter(x => this.has(x.ipa, k));
+      const no  = ws.filter(x => !this.has(x.ipa, k));
+      if(yes.length && no.length) out.push({ k: k, yes: yes, no: no });
+    }
+    return out;
+  },
+  build(n){
+    const pool = this.pool();
+    for(let i = pool.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+    }
+    this.qs = pool.slice(0, Math.min(n, pool.length)).map(o => {
+      const h = o.yes[Math.floor(Math.random() * o.yes.length)];
+      const m = o.no[Math.floor(Math.random() * o.no.length)];
+      const flip = Math.random() < 0.5;
+      return { k: o.k, a: flip ? m : h, b: flip ? h : m, ans: flip ? 1 : 0 };
+    });
+    this.idx = 0; this.score = 0; this.cur = this.qs[0] || null; this.answered = false; this.lastOK = null; this.miss = [];
+  },
+  host(){
+    let m = document.getElementById('pQuizMask');
+    if(!m){
+      m = document.createElement('div');
+      m.id = 'pQuizMask'; m.className = 'pallmask';
+      m.addEventListener('click', () => PQUIZ.close());
+      document.body.appendChild(m);
+    }
+    let h = document.getElementById('pQuiz');
+    if(!h){
+      h = document.createElement('div');
+      h.id = 'pQuiz'; h.className = 'pallbox';
+      document.body.appendChild(h);
+    }
+    return h;
+  },
+  open(){
+    this.closeAll();
+    this.build(8);
+    this.on = true;
+    this.host();
+    document.getElementById('pQuizMask').classList.add('on');
+    this.render();
+    document.getElementById('pQuiz').classList.add('on');
+  },
+  close(){
+    this.on = false;
+    if(this.timer){ clearTimeout(this.timer); this.timer = null; }
+    const m = document.getElementById('pQuizMask'), h = document.getElementById('pQuiz');
+    if(m) m.classList.remove('on');
+    if(h) h.classList.remove('on');
+  },
+  closeAll(){
+    const m = document.getElementById('pAllMask'), h = document.getElementById('pAll');
+    if(m) m.classList.remove('on');
+    if(h) h.classList.remove('on');
+    PALL.on = false;
+  },
+  line(x, k, tag){
+    const hit = this.has(x.ipa, k);
+    return `<div class="qzline${hit ? ' hit' : ''}"><em>${tag}</em><b>${esc(x.w)}</b><i>/${esc(String(x.ipa || '').replace(/^\/|\/$/g, ''))}/</i>${hit ? '<u>含 ' + esc(k) + '</u>' : ''}</div>`;
+  },
+  render(){
+    const h = this.host();
+    if(!this.qs.length){
+      h.innerHTML = `<div class="pallhd"><b>听辨小测</b><em data-pa="qz-close" title="收起">×</em></div>
+        <div class="qzend">暂时凑不出题目：音素数据里还缺成对的词。</div>`;
+      return;
+    }
+    if(this.idx >= this.qs.length){
+      const s = this.score, n = this.qs.length;
+      const hint = s >= n - 1 ? '耳朵很灵，长短音、清浊音都分得开。'
+                 : s >= Math.ceil(n / 2) ? '已经能抓住大半，回面板把听错的几个音再听两遍。'
+                 : '别急，先在面板逐个音听熟，再回来测。';
+      h.innerHTML = `<div class="pallhd"><b>听辨小测</b><em data-pa="qz-close" title="收起">×</em></div>
+        <div class="qzend">这组答对 <b>${s}</b> / ${n}</div>
+        <div class="qzhint">${hint}</div>
+        ${this.miss.length ? '<div class="qzhint">这次没听出的：' + this.miss.map(k => '/' + esc(k) + '/').join(' ') + '，回面板点它再听两遍。</div>' : ''}
+        <div class="qzrow"><button class="qzplay" data-pa="qz-again">再来一组</button>
+        <button class="qzplay" data-pa="qz-close">回面板</button></div>
+        <div class="qzfoot"><em data-pa="qz-clear">清空练习记录</em></div>`;
+      return;
+    }
+    const q = this.cur;
+    h.innerHTML = `<div class="pallhd"><b>听辨小测</b><em data-pa="qz-close" title="收起">×</em></div>
+      <div class="pallsub">第 ${this.idx + 1} / ${this.qs.length} 题 · 已答对 ${this.score}</div>
+      <div class="qzk">哪个词里有 <b>/${esc(q.k)}/</b> 这个音？</div>
+      <div class="qzrow">
+        <button class="qzplay${this.answered && q.ans === 0 ? ' on' : ''}" data-pa="qz-play" data-i="0">听 A</button>
+        <button class="qzplay${this.answered && q.ans === 1 ? ' on' : ''}" data-pa="qz-play" data-i="1">听 B</button>
+      </div>
+      <div class="qzpick">
+        <button data-pa="qz-ans" data-i="0"${this.answered ? ' disabled' : ''}>选 A</button>
+        <button data-pa="qz-ans" data-i="1"${this.answered ? ' disabled' : ''}>选 B</button>
+      </div>
+      ${this.answered ? '<div class="qzfb">' + this.line(q.a, q.k, 'A') + this.line(q.b, q.k, 'B') + '<div class="qzres ' + (this.lastOK ? 'ok' : 'no') + '">' + (this.lastOK ? '答对了' : '差一点') + '</div></div>' : ''}`;
+  },
+  play(i){
+    const q = this.cur;
+    if(!q) return;
+    const x = i === 0 ? q.a : q.b;
+    if(x && x.w) PV.play(x.w);
+  },
+  answer(i){
+    if(this.answered || !this.cur) return;
+    const q = this.cur;
+    this.answered = true;
+    this.lastOK = (i === q.ans);
+    if(this.lastOK){ this.score++; }
+    else if(this.miss.indexOf(q.k) < 0){ this.miss.push(q.k); }
+    QLOG.add(q.k, this.lastOK);
+    this.render();
+    const self = this;
+    if(this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(function(){
+      if(!self.on) return;
+      self.idx++;
+      self.cur = self.qs[self.idx] || null;
+      self.answered = false;
+      self.lastOK = null;
+      self.timer = null;
+      self.render();
+    }, 1600);
+  },
+  act(a, el){
+    if(a === 'qz-open'){ this.open(); return; }
+    if(a === 'qz-close'){ this.close(); return; }
+    if(a === 'qz-again'){ this.build(8); this.render(); return; }
+    if(a === 'qz-clear'){ QLOG.clear(); this.miss = []; this.build(8); this.render(); return; }
+    if(a === 'qz-play'){ this.play(Number(el.dataset.i || 0)); return; }
+    if(a === 'qz-ans'){ this.answer(Number(el.dataset.i || 0)); return; }
+  }
+};
+window.VM_PQUIZ = PQUIZ;
+
+/* 面板挂在 body 上，不经过 #cardHost 的委托，所以单独接一层 */
+document.addEventListener('click', e => {
+  const paEl = e.target.closest('[data-pa]');
+  if(!paEl) return;
+  e.stopPropagation();
+  PALL.act(paEl.dataset.pa, paEl);
+});
+
+function bubRerender(){
+  const h = document.getElementById('pBub');
+  if(!h || !bub.word) return;
+  h.innerHTML = bubHTML(bub.word, bub.idx);
+  bubPlace();
+  bubArm();
+}
+
+function bubAct(act, el){
+  const h = document.getElementById('pBub');
+  if(!h) return;
+  if(act === 'close'){ closeBub(); return; }
+  if(act === 'sayw'){
+    const word = el.dataset.w || '';
+    if(word){
+      PV.play(word);
+      const row = el.closest('.pbrow');
+      if(row){
+        h.querySelectorAll('.pbrow.on').forEach(x => x.classList.remove('on'));
+        row.classList.add('on');
+      }
+    }
+    bubArm();
+    return;
+  }
+  if(act === 'say'){
+    const word = el.dataset.w || '';
+    if(word){
+      PV.play(word);
+      h.querySelectorAll('.pbrow.on').forEach(x => x.classList.remove('on'));
+      const row = el.closest('.pbrow');
+      (row || el).classList.add('on');
+    }
+    bubArm();
+    return;
+  }
+  /* 对比词 / 同类词直接收进词库：有中文和音标就一并带上，没有就留空待补 */
+  if(act === 'keep'){
+    const word = el.dataset.w || '';
+    const k = String(word).trim().toLowerCase();
+    if(!k){ return; }
+    if(overrides[k] && overrides[k].custom){ vmToast('词库里已经有 ' + word); return; }
+    const made = newCard(word);
+    if(!made){ vmToast('这个词收不进来：' + word); return; }
+    const o = overrides[k] || (overrides[k] = {});
+    o.custom = true; o.mine = true;      // 词表本来就有这个词时，只补「收进词库」的标记
+    const cn = (el.dataset.cn || '').trim();
+    const ipa = String(el.dataset.ipa || '').replace(/^\/+|\/+$/g, '').trim();
+    if(cn) o.cn = cn;
+    if(ipa && !o.ipa) o.ipa = ipa;
+    o.pos = o.pos || '';
+    saveO();
+    renderList();
+    if(typeof updateDue === 'function') updateDue();
+    vmToast((SRC_KEYS[k] || o.inlist) ? ('已收进词库：' + word) : ('已收进词库：' + word + '（在词库里点「导入」才进词表）'));
+    if(typeof paintLibBar === 'function') paintLibBar();
+    bubRerender();
+    return;
+  }
+  if(act === 'more'){
+    bub.open2 = !bub.open2;
+    const d = h.querySelector('.pbdeep');
+    if(d) d.classList.toggle('on', bub.open2);
+    const m = h.querySelector('.pbmore');
+    if(m) m.classList.toggle('on', bub.open2);
+    bubPlace();
+    bubArm();
+    return;
+  }
+  if(act === 'tip-edit' || act === 'rule-edit'){
+    bubDisarm();
+    h.innerHTML = bubEditHTML(bub.sym, act === 'tip-edit' ? 'tip' : 'rule');
+    const t = document.getElementById('pbEdit');
+    if(t){ t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+    bubPlace();
+    return;
+  }
+  if(act === 'cancel'){ bubRerender(); return; }
+  if(act === 'save'){
+    const t = document.getElementById('pbEdit');
+    const val = (t && t.value || '').trim();
+    if(el.dataset.k === 'rule') saveRule(bub.sym, val);
+    else savePhon(bub.sym, val);
+    bubRerender();
+    return;
+  }
+  if(act === 'reset'){
+    if(el.dataset.k === 'rule') saveRule(bub.sym, null);
+    else savePhon(bub.sym, null);
+    bubRerender();
+    return;
+  }
+}
+
+/* 点气泡里的东西 / 点外面都在这儿收口 */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-pb]');
+  if(el){ e.stopPropagation(); bubAct(el.dataset.pb, el); return; }
+  const h = document.getElementById('pBub');
+  if(!h || !h.classList.contains('on')) return;
+  if(e.target.closest('.pc')) return;      // 换点另一个音素由音标那条分支接手
+  closeBub();
+});
+
+/* 点进编辑框就别让 8 秒到了强收：聚焦停表，离开重新计时 */
+document.addEventListener('focusin', e => {
+  if(e.target && e.target.id === 'pbEdit') bubDisarm();
+});
+document.addEventListener('focusout', e => {
+  if(e.target && e.target.id === 'pbEdit' && bub.word) bubArm();
+});
+/* 滚动、改窗口大小：位置跟着变不如先收起来 */
+window.addEventListener('scroll', e => {
+  const h = document.getElementById('pBub');
+  if(!h || !h.classList.contains('on')) return;
+  if(e.target && e.target.closest && e.target.closest('#pBub')) return;
+  closeBub();
+}, true);
+window.addEventListener('resize', () => {
+  const h = document.getElementById('pBub');
+  if(h && h.classList.contains('on')) bubPlace();
+});
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  const h = document.getElementById('pBub');
+  if(h && h.classList.contains('on')) closeBub();
+});
+
+/* 给外部验收用（和 VM_DICT / VM_MORPH 一样，方便脚本核对口径） */
+window.VM_PHON2 = {
+  data: P2, has: hasP2, where: phonWhere,
+  ruleOf, ruleOrigin, ruleMine, saveRule,
+  open: openBub, close: closeBub,
+  state: () => ({ sym:bub.sym, idx:bub.idx, open2:bub.open2, word: bub.word && bub.word.w })
+};
+
+const IPA_KEYS = Object.keys(PHON).sort((a,b) => b.length - a.length);
+
+/* 把音标切成一个个可点的音素，顺便算出每个音在第几个音节、重不重读 */
+function analyzeIPA(ipa){
+  const raw = String(ipa || '').replace(/^\/+|\/+$/g, '').trim();
+  const syms = [];
+  let i = 0;
+  while(i < raw.length){
+    let hit = null;
+    for(let n = 0; n < IPA_KEYS.length; n++){
+      if(raw.startsWith(IPA_KEYS[n], i)){ hit = IPA_KEYS[n]; break; }
+    }
+    if(hit){ syms.push(hit); i += hit.length; }
+    else { i += 1; }   // 不认识的符号直接跳过，不让整张卡崩掉
+  }
+  let syl = 0, stressNext = false, mainSyl = 0;
+  const items = [];
+  syms.forEach(s => {
+    if(s === 'ˈ'){ stressNext = true; items.push({ s:s, kind:'s', syl:syl+1 }); return; }
+    if(s === 'ˌ'){ items.push({ s:s, kind:'s2', syl:syl+1 }); return; }
+    const isV = PHON[s] && PHON[s].t === 'v';
+    if(isV){ syl += 1; if(stressNext){ mainSyl = syl; stressNext = false; } }
+    items.push({ s:s, kind: isV ? 'v' : 'c', syl: Math.max(1, syl), stressed:false });
+  });
+  if(!syl) syl = 1;
+  if(!mainSyl) mainSyl = 1;
+  items.forEach(it => { it.stressed = (it.kind === 'v' && it.syl === mainSyl); });
+  return { items: items, sylCount: syl, mainSyl: mainSyl };
+}
+
+function phonHTML(w){
+  const a = analyzeIPA(w.ipa);
+  if(!a.items.length){
+    return '<span class="pc empty" data-p="-1">还没有音标，点这里手写补上</span>';
+  }
+  return a.items.map((it, idx) => {
+    const extra = it.kind === 's' ? ' st' : '';
+    return `<span class="pc${extra}" data-p="${idx}">${esc(it.s)}</span>`;
+  }).join('');
+}
+
+/* 点开一个音素，说清它在本词里的位置 */
+function phonInfoHTML(w, idx){
+  const a = analyzeIPA(w.ipa);
+  const it = a.items[idx];
+  if(!it) return '';
+  const base = PHON[it.s] ? PHON[it.s].d : '这个词里出现的符号，还没收录说明，可以自己补。';
+  const where = phonWhere(w, idx);
+  const mine = Object.prototype.hasOwnProperty.call(MINE_PHON, it.s);
+  const pencil = `<em class="pedit" data-act="phonedit">${mine ? '改 · 已手改' : '改'}</em>`;
+  return `<b>${esc(it.s)}</b>${pencil}${esc(base)}<span>${esc(where)}</span>`;
+}
+
+/* 当场改这一句：改完存本机，盖过 data/phon.js，随时能还原 */
+function phonEditHTML(w, idx){
+  const a = analyzeIPA(w.ipa);
+  const it = a.items[idx];
+  if(!it) return '';
+  const cur = PHON[it.s] ? PHON[it.s].d : '';
+  return `<b>${esc(it.s)}</b>
+    <textarea id="pedit" rows="3" spellcheck="false">${esc(cur)}</textarea>
+    <div class="prow">
+      <button class="pri" data-act="phonsave">保存</button>
+      <button data-act="phonreset">还原原话</button>
+      <button data-act="phoncancel">取消</button>
+    </div>
+    <span>一句话说清嘴怎么摆、跟中文差哪；不写专业名词。</span>`;
+}
+
+/* 记住刚点开的是哪个音素，编辑按钮才知道改谁 */
+let lastPhonIdx = -1;
+
+function handlePhonAct(act){
+  const info = document.getElementById('phonInfo');
+  if(!info || !cur) return;
+  const w = merged(cur);
+  const a = analyzeIPA(w.ipa);
+  const it = a.items[lastPhonIdx];
+  if(!it) return;
+  if(act === 'phonedit'){
+    info.innerHTML = phonEditHTML(w, lastPhonIdx);
+    const t = document.getElementById('pedit');
+    if(t){ t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+    return;
+  }
+  if(act === 'phoncancel'){
+    info.innerHTML = phonInfoHTML(w, lastPhonIdx);
+    return;
+  }
+  if(act === 'phonsave'){
+    const t = document.getElementById('pedit');
+    const val = (t && t.value || '').trim();
+    savePhon(it.s, val);
+    info.innerHTML = phonInfoHTML(w, lastPhonIdx);
+    return;
+  }
+  if(act === 'phonreset'){
+    savePhon(it.s, null);
+    info.innerHTML = phonInfoHTML(w, lastPhonIdx);
+    return;
+  }
+}
+
+/* ================= 词素账本 =================
+   构件表全部来自 data/morph.js，本文件不写死任何具体构件、也不对某个词特判。
+   账本存 localStorage 的 vm.morph.v1，真词源件与自造件分两栏，永不混存：
+     { v:1,
+       source:{ 构件key:{key,type,gloss,n,last,words:{词:{n,last}}} },
+       self  :{ ……同结构 }
+     }
+==========================================*/
+const MDATA  = window.MORPH_DATA || { items: [], types: {} };
+const MTYPES = MDATA.types || {};
+const MITEMS = (MDATA.items || []).map(it => ({
+  key : String(it.key || '').toLowerCase(),
+  kind: it.kind === 'self' ? 'self' : 'source',
+  type: it.type || '',
+  gloss: it.gloss || '',
+  scope: it.scope || '',
+  forms: (Array.isArray(it.forms) && it.forms.length ? it.forms : [it.key])
+           .map(f => String(f).toLowerCase()).filter(Boolean).sort((a, b) => b.length - a.length)
+})).filter(it => it.key && it.forms.length);
+
+/* 匹配位置：不写 scope 就按类型推。前缀看词首、后缀看词尾，其余看词内 */
+function morphScope(it){
+  if(it.scope) return it.scope;
+  if(it.type === 'prefix') return 'start';
+  if(it.type === 'suffix') return 'end';
+  return 'in';
+}
+function morphTypeLabel(it){
+  const t = MTYPES[it.type];
+  return (t && t.label) || it.type || '构件';
+}
+
+/* 通用匹配：长串优先，同一处重叠只留更长的那个（quire 盖住 ire） */
+function morphHits(word){
+  const s = String(word || '').toLowerCase();
+  const raw = [];
+  if(!s) return raw;
+  MITEMS.forEach(it => {
+    const sc = morphScope(it);
+    if(sc === 'none') return;                    // 歧义太大的构件只当参考，不自动上账
+    it.forms.forEach(f => {
+      if(sc === 'start'){
+        if(s.length > f.length && s.lastIndexOf(f, 0) === 0) raw.push({ it:it, f:f, pos:0, len:f.length });
+      } else if(sc === 'end'){
+        if(s.length > f.length && s.slice(-f.length) === f) raw.push({ it:it, f:f, pos:s.length - f.length, len:f.length });
+      } else {
+        let from = 0, p = s.indexOf(f, from), guard = 0;
+        while(p > -1 && guard++ < 24){
+          raw.push({ it:it, f:f, pos:p, len:f.length });
+          from = p + 1;
+          p = s.indexOf(f, from);
+        }
+      }
+    });
+  });
+  raw.sort((a, b) => (b.len - a.len) || (a.pos - b.pos));
+  const kept = [];
+  raw.forEach(h => {
+    const s1 = h.pos, e1 = h.pos + h.len;
+    for(let i = 0; i < kept.length; i++){
+      const k = kept[i];
+      if(!(e1 <= k.pos || s1 >= k.pos + k.len)) return;   // 与已留的重叠 → 让位给更长的
+      if(k.it.key === h.it.key && k.pos === h.pos) return; // 同一条同位置只留一份
+    }
+    kept.push(h);
+  });
+  kept.sort((a, b) => a.pos - b.pos);
+  return kept;
+}
+
+/* 账本本体：读坏 / 缺栏 / 老数据都兜住，不报错。
+   v:1 只有 source / self 两栏；v:2 多了 mine（你自己用编辑面板划的 w「我」），
+   老账本读进来时 mine 自动补空栏，原来的两栏一个字段都不动。 */
+let mbook = ls.get(KEY.m, null);
+function bookOf(){
+  if(!mbook || typeof mbook !== 'object') mbook = { v:2, source:{}, self:{}, mine:{} };
+  if(!mbook.source || typeof mbook.source !== 'object') mbook.source = {};
+  if(!mbook.self   || typeof mbook.self   !== 'object') mbook.self   = {};
+  if(!mbook.mine   || typeof mbook.mine   !== 'object') mbook.mine   = {};
+  mbook.v = 2;
+  return mbook;
+}
+const saveM = () => ls.set(KEY.m, mbook);
+
+/* 看过就记账：构件次数 +1、词次数 +1、最近日期 = 今天（本机时区） */
+function morphRecord(word, hits){
+  if(!hits || !hits.length) return;
+  const id = String(word || '').toLowerCase();
+  if(!id) return;
+  const book = bookOf();
+  const day = ymd();
+  hits.forEach(h => {
+    const col = book[h.it.kind];
+    let e = col[h.it.key];
+    if(!e || typeof e !== 'object') e = col[h.it.key] = { key:h.it.key, type:h.it.type, gloss:h.it.gloss, n:0, last:'', words:{} };
+    e.type = h.it.type;
+    e.gloss = h.it.gloss;
+    e.n = (e.n | 0) + 1;
+    e.last = day;
+    if(!e.words || typeof e.words !== 'object') e.words = {};
+    let we = e.words[id];
+    if(!we || typeof we !== 'object') we = e.words[id] = { n:0, last:'' };
+    we.n = (we.n | 0) + 1;
+    we.last = day;
+  });
+  saveM();
+}
+
+/* ---------- 背记数据反哺：构件权重 ----------
+   权重全部来自真数据，不写死任何词、任何构件：
+     见过的次数 × weights.seen  ＋  当前档位 box × weights.box  ＋  打错次数 × weights.wrong
+   系数放在 data/morph.js 的 weights 里（规则外置，改系数不用动这里）。
+   词的重 = 它这一串背记数据；构件的重 = 用到它的所有词的重量相加。 */
+const MW = Object.assign({ seen:3, box:4, wrong:5 }, (MDATA && MDATA.weights) || {});
+function wordWeight(id){
+  const p = progress[id] || {};
+  const t = typo[id] || {};
+  const seen  = Math.max(0, p.seen | 0);
+  const box   = Math.max(0, p.box  | 0);
+  const wrong = Math.max(0, t.count | 0);
+  return seen * (+MW.seen || 0) + box * (+MW.box || 0) + wrong * (+MW.wrong || 0);
+}
+function entryWeight(e){
+  if(!e || !e.words || typeof e.words !== 'object') return 0;
+  return Object.keys(e.words).reduce((a, w) => a + wordWeight(w), 0);
+}
+function morphWeight(key){
+  const b = bookOf();
+  const e = b.source[key] || b.self[key] || b.mine[key];
+  return entryWeight(e);
+}
+
+/* ---------- 手改件：编辑面板里标 w（我）的切分 ---------- */
+/* 只认 w，r/m 一个都不碰：真词源栏永远由 data/morph.js 决定，用户改不动 */
+function morphMineSegs(id){
+  const o = overrides[String(id || '').toLowerCase()];
+  const st = (o && Array.isArray(o.struct)) ? o.struct : [];
+  const out = [], seen = {};
+  st.forEach(s => {
+    if(!s || String(s.k || '') !== 'w') return;
+    const t = String(s.t == null ? '' : s.t).trim();
+    const k = t.toLowerCase();
+    if(!t || seen[k]) return;
+    seen[k] = 1;
+    out.push({ key:k, t:t, gloss:String(s.g == null ? '' : s.g).trim() });
+  });
+  return out;
+}
+/* 入账：以这次保存的切分为准，删掉的片段连带撤账；每次保存给「出现次数」加一 */
+function morphRecordMine(id, segs){
+  const book = bookOf();
+  const day = ymd();
+  const keep = {};
+  (segs || []).forEach(s => { keep[s.key] = s; });
+  Object.keys(book.mine).forEach(k => {
+    const e = book.mine[k];
+    if(!e || !e.words) return;
+    /* 构件行手改层 / 自己加的那几条归 mrow* 自己管，不能被划词这边冲掉 */
+    if(e.src === 'mrow' || e.src === 'add') return;
+    if(!keep[k]) delete e.words[id];
+  });
+  Object.keys(keep).forEach(k => {
+    const s = keep[k];
+    let e = book.mine[k];
+    if(!e || typeof e !== 'object') e = book.mine[k] = { key:k, type:'mine', gloss:'', text:s.t, n:0, last:'', words:{} };
+    if(!e.words || typeof e.words !== 'object') e.words = {};
+    e.text = s.t;
+    if(s.gloss) e.gloss = s.gloss;
+    e.type = 'mine';
+    let we = e.words[id];
+    if(!we || typeof we !== 'object') we = e.words[id] = { n:0, last:'' };
+    we.n = (we.n | 0) + 1;
+    we.last = day;
+    e.last = day;
+  });
+  Object.keys(book.mine).forEach(k => {
+    const e = book.mine[k];
+    if(!e || !e.words) { delete book.mine[k]; return; }
+    const ws = Object.keys(e.words).filter(w => e.words[w]);
+    if(!ws.length) { delete book.mine[k]; return; }
+    e.n = ws.reduce((a, w) => a + ((e.words[w].n | 0)), 0);
+    let last = '';
+    ws.forEach(w => { const d = String(e.words[w].last || ''); if(d > last) last = d; });
+    e.last = last;
+  });
+  saveM();
+}
+/* 老版本存下的、带 w 的改动：开页面时补进「我改」栏，已经记过的不重复累加 */
+function morphSyncMine(id){
+  const segs = morphMineSegs(id);
+  const book = bookOf();
+  let has = false;
+  Object.keys(book.mine).forEach(k => {
+    const e = book.mine[k];
+    if(e && e.words && e.words[id]) has = true;
+  });
+  if(!segs.length){ if(has) morphRecordMine(id, []); return; }
+  if(has) return;
+  morphRecordMine(id, segs);
+}
+/* 我改这一栏里，同一个片段还被你在哪些词上划过 */
+function mineOthers(key, id){
+  const e = bookOf().mine[key];
+  if(!e || !e.words) return [];
+  return Object.keys(e.words).filter(k => k !== id && BY_W[k]).sort((a, b) => {
+    const la = String((e.words[a] && e.words[a].last) || ''), lb = String((e.words[b] && e.words[b].last) || '');
+    if(la !== lb) return la < lb ? 1 : -1;
+    return wordWeight(b) - wordWeight(a);
+  });
+}
+
+/* 卡片上那一行提示：最多 3 条构件，多的收尾一句，不堆按钮 */
+const MPH_MAX = 3;
+/* 先按权重挑出要露的几条（背得多、错得多的先露），露出来之后仍按词里从左到右排，便于顺着读 */
+function morphPick(hits){
+  const scored = hits.map((h, i) => ({ h:h, i:i, w:morphWeight(h.it.key) }));
+  scored.sort((a, b) => (b.w - a.w) || (a.i - b.i));
+  const top = scored.slice(0, MPH_MAX);
+  top.sort((a, b) => a.i - b.i);
+  return { top: top.map(x => x.h), extra: hits.length - top.length };
+}
+
+/* 词库索引：构件 key → 词库里用到它的词（按词库顺序）。全部现算，不写死任何构件 */
+let MPH_IDX = null, MPH_IDX_N = -1;
+function morphLexicon(){
+  if(MPH_IDX && MPH_IDX_N === WORDS.length) return MPH_IDX;
+  const idx = {};
+  WORDS.forEach(w => {
+    const id = String((w && w.w) || '').toLowerCase();
+    if(!id) return;
+    const once = {};
+    morphHits(id).forEach(h => {
+      const k = h.it.key;
+      if(once[k]) return;
+      once[k] = 1;
+      if(!idx[k]) idx[k] = [];
+      idx[k].push(id);
+    });
+  });
+  MPH_IDX = idx; MPH_IDX_N = WORDS.length;
+  return idx;
+}
+
+/* 这个词库里另外还有哪些词用到这个构件：
+   背过的（账本里有最近日期的）按日期新→旧排前面，其余保持词库顺序 —— 第一个就是点击落点 */
+function morphOthers(key, id){
+  const all = morphLexicon()[key] || [];
+  const book = bookOf();
+  const e = book.source[key] || book.self[key] || { words:{} };
+  const ws = (e.words && typeof e.words === 'object') ? e.words : {};
+  return all.filter(k => k !== id && BY_W[k]).sort((a, b) => {
+    const la = String((ws[a] && ws[a].last) || ''), lb = String((ws[b] && ws[b].last) || '');
+    if(la !== lb) return la < lb ? 1 : -1;
+    const na = (ws[a] && ws[a].n) | 0, nb = (ws[b] && ws[b].n) | 0;
+    if(na !== nb) return nb - na;
+    return 0;                       // 都没有背过记录 → 稳定排序，保持词库顺序
+  });
+}
+
+/* 同族词：词库里的 fam 一行一条，形如 "desire 心底 de 的火——愿望"
+   这里只按「首个空格前是词名、后面是释义」拆，不针对任何具体词特判 */
+function famParse(s){
+  const t = String(s == null ? '' : s).trim();
+  if(!t) return null;
+  const i = t.search(/\s/);
+  const w = (i < 0) ? t : t.slice(0, i);
+  const d = (i < 0) ? '' : t.slice(i + 1).trim();
+  return { w:w, d:d };
+}
+
+/* 同族词行：小标签「同族」+ 可点词名 + 释义，条间用「·」分隔、自然折行；
+   没有同族词就不返回东西。词名中黑、释义灰、字号比正文小一号。 */
+function famHTML(w){
+  const arr = (w && Array.isArray(w.fam)) ? w.fam : [];
+  const items = arr.map(famParse).filter(Boolean);
+  if(!items.length) return '';
+  const parts = items.map(it => {
+    const hit = BY_W[String(it.w || '').toLowerCase()];
+    const name = hit
+      ? `<b class="jm" data-mph="${esc(hit.w.toLowerCase())}" title="点一下去看 ${esc(hit.w)}">${esc(it.w)}</b>`
+      : `<b>${esc(it.w)}</b>`;
+    return `<span class="fi">${name}${it.d ? ' ' + esc(it.d) : ''}</span>`;
+  });
+  return `<span class="mrow famrow"><span class="mtag t">同族</span>${parts.join('')}</span>`;
+}
+
+/* ---------- 词源构件行手改层（D 项）----------
+   点结构块里那一行「词源构件」，就地写自己看得懂的说法，存进账本 vm.morph.v1 的 mine 栏。
+   一条的骨架就是 { w, key, old, val, mark, at }：
+     w=哪个词、key=构件稳定标识、old=原释义、val=你写的、mark=根/记/我、at=哪天改的；
+   另挂 text / type / src / words / edits，供计数与账本列表用：
+     src='mrow' = 改词源那一段的释义；src='add' = 这个词没有词源构件，自己加的一条。
+   全部只盖本机 localStorage，data/*.js 一个字都不动，随时逐条复原。 */
+const MROW_MARKS = ['r','m','w'];
+function mrowKeyOf(k){ return String(k == null ? '' : k).trim().toLowerCase(); }
+function mineRecalc(e){
+  if(!e || typeof e !== 'object') return;
+  if(!e.words || typeof e.words !== 'object') e.words = {};
+  const ws = Object.keys(e.words).filter(w => BY_W[w]);
+  Object.keys(e.words).forEach(w => { if(ws.indexOf(w) < 0) delete e.words[w]; });
+  e.n = ws.reduce((a, w) => a + ((e.words[w] && e.words[w].n) | 0), 0);
+  let last = '';
+  ws.forEach(w => { const d = String((e.words[w] && e.words[w].last) || ''); if(d > last) last = d; });
+  e.last = last;
+}
+/* 取这个词、这个构件上你写过的那一条（没写过就是 null） */
+function mrowEdit(id, key){
+  const e = bookOf().mine[mrowKeyOf(key)];
+  if(!e || typeof e !== 'object') return null;
+  const wid = String(id || '').toLowerCase();
+  if(e.edits && typeof e.edits === 'object' && e.edits[wid] && typeof e.edits[wid] === 'object') return e.edits[wid];
+  if(e.src === 'mrow' && String(e.w || '').toLowerCase() === wid) return e;
+  return null;
+}
+/* 这个词下面「自己加」的那几条 */
+function mrowAddList(id){
+  const book = bookOf();
+  const wid = String(id || '').toLowerCase();
+  const out = [];
+  Object.keys(book.mine).forEach(k => {
+    const e = book.mine[k];
+    if(!e || typeof e !== 'object') return;
+    if(e.src !== 'add') return;
+    if(!e.words || !e.words[wid]) return;
+    out.push(e);
+  });
+  return out;
+}
+/* 存下一条：写 mine 栏，原值一直留着，所以随时退得回去 */
+function mrowSave(id, key, old, val, mark, text, type){
+  const book = bookOf();
+  const wid = String(id || '').toLowerCase();
+  const k = mrowKeyOf(key);
+  if(!wid || !k) return;
+  let e = book.mine[k];
+  if(!e || typeof e !== 'object'){
+    e = book.mine[k] = { w:wid, key:k, old:'', val:'', mark:'w', at:'',
+                         text:text || k, type:type || '', src:'mrow', gloss:'', n:0, last:'', words:{}, edits:{} };
+  }
+  if(!e.edits || typeof e.edits !== 'object') e.edits = {};
+  if(!e.words || typeof e.words !== 'object') e.words = {};
+  const day = ymd();
+  if(!e.src) e.src = 'mrow';
+  if(!e.w) e.w = wid;
+  if(text) e.text = text;
+  if(type && !e.type) e.type = type;
+  if(!e.edits[wid]){
+    e.edits[wid] = { w:wid, key:k, old:String(old == null ? '' : old), val:'', mark:'w', at:day };
+  }
+  const ed = e.edits[wid];
+  ed.old  = String(old == null ? '' : old);
+  ed.val  = String(val == null ? '' : val);
+  ed.mark = (mark === 'm' || mark === 'r' || mark === 'w') ? mark : 'w';
+  ed.at   = day;
+  if(String(e.w || '').toLowerCase() === wid){    // 顶层就是这一条，账本列表直接读得到
+    e.old = ed.old; e.val = ed.val; e.mark = ed.mark; e.at = day;
+    e.gloss = ed.val;
+  }
+  let we = e.words[wid];
+  if(!we || typeof we !== 'object') we = e.words[wid] = { n:0, last:'' };
+  we.n = (we.n | 0) + 1;
+  we.last = day;
+  mineRecalc(e);
+  saveM();
+}
+/* 「＋自己加一条」：没有词源构件的词，也能照自己进度定义一个词根 */
+function mrowAdd(id, text, val){
+  const book = bookOf();
+  const wid = String(id || '').toLowerCase();
+  const t = String(text == null ? '' : text).trim();
+  const k = mrowKeyOf(t);
+  if(!wid || !k) return;
+  let e = book.mine[k];
+  if(!e || typeof e !== 'object'){
+    e = book.mine[k] = { w:wid, key:k, old:'', val:'', mark:'w', at:'', text:t, type:'mine', src:'add', gloss:'', n:0, last:'', words:{}, edits:{} };
+  }
+  if(!e.words || typeof e.words !== 'object') e.words = {};
+  const day = ymd();
+  e.src  = 'add';
+  e.text = t;
+  e.w    = wid;
+  e.val  = String(val == null ? '' : val);
+  e.mark = 'w';
+  e.at   = day;
+  e.gloss = e.val;
+  let we = e.words[wid];
+  if(!we || typeof we !== 'object') we = e.words[wid] = { n:0, last:'' };
+  we.n = (we.n | 0) + 1;
+  we.last = day;
+  mineRecalc(e);
+  saveM();
+}
+/* 复原：这一条退回词源原值，并从 mine 栏删掉（whole=true 是账本里整条删） */
+function mrowRestore(id, key, whole){
+  const book = bookOf();
+  const k = mrowKeyOf(key);
+  const e = book.mine[k];
+  if(!e || typeof e !== 'object') return;
+  if(whole){ delete book.mine[k]; saveM(); return; }
+  const wid = String(id || '').toLowerCase();
+  if(e.edits && typeof e.edits === 'object' && e.edits[wid]) delete e.edits[wid];
+  if(String(e.w || '').toLowerCase() === wid){
+    e.w = ''; e.old = ''; e.val = ''; e.mark = 'w'; e.at = ''; e.gloss = '';
+  }
+  if(e.src === 'add' || !Object.keys(e.edits || {}).length){
+    if(e.words && e.words[wid]) delete e.words[wid];
+  }
+  if(!e.words || !Object.keys(e.words).length) delete book.mine[k];
+  else mineRecalc(e);
+  saveM();
+}
+/* ---------- 那一行的编辑条：输入框预填释义 + 根/记/我 + 保存/取消 ---------- */
+function mrowEditHTML(id, key, val, text, mark, old){
+  return '<div class="mrowedit" data-mrowed="' + esc(key) + '" data-word="' + esc(id) + '" data-text="' + esc(text) + '" data-old="' + esc(old) + '">'
+    + '<input class="mrowin" type="text" data-mrowin="1" value="' + esc(val) + '" placeholder="这一段的释义，比如「高处」">'
+    + MROW_MARKS.map(m => '<button class="mrowmk' + (m === mark ? ' cur' : '') + '" data-mrowmk="' + m + '">' + segMarkLabel(m) + '</button>').join('')
+    + '<button class="mrowbtn pri" data-mrowsave="1">保存</button>'
+    + '<button class="mrowbtn" data-mrowcancel="1">取消</button>'
+    + '</div>';
+}
+function mrowAddHTML(id){
+  return '<div class="mrowedit mrowaddbox" data-mrowaddbox="1" data-word="' + esc(id) + '">'
+    + '<input class="mrowin" type="text" data-addtext="1" placeholder="片段，比如 re-">'
+    + '<input class="mrowin" type="text" data-addval="1" placeholder="你的含义，比如「再、回」">'
+    + '<button class="mrowbtn pri" data-mrowaddsave="1">保存</button>'
+    + '<button class="mrowbtn" data-mrowaddcancel="1">取消</button>'
+    + '</div>';
+}
+function mrowCloseEdit(){
+  const host = document.getElementById('cardHost');
+  const box = host && host.querySelector('.mrowedit');
+  if(box) box.remove();
+}
+function mrowAfter(){
+  renderCard();
+  const bk = document.getElementById('shBook');
+  if(bk && bk.classList.contains('open')) renderBook();
+}
+function bindMrowKeys(box){
+  if(!box) return;
+  [box.querySelector('[data-mrowin]'), box.querySelector('[data-addtext]'), box.querySelector('[data-addval]')].forEach(inp => {
+    if(!inp) return;
+    inp.addEventListener('keydown', ev => {
+      if(ev.key === 'Enter'){ ev.preventDefault(); ev.stopPropagation(); if(box.hasAttribute('data-mrowaddbox')) mrowAddBox(box); else mrowSaveBox(box); }
+      else if(ev.key === 'Escape'){ ev.preventDefault(); ev.stopPropagation(); mrowCloseEdit(); }
+    });
+  });
+}
+/* 点一行构件 → 就地开编辑条（再点同一行＝收起） */
+function mrowOpen(row){
+  if(!row || !cur) return;
+  const id  = String(row.dataset.word || cur.w || '').toLowerCase();
+  const key = String(row.dataset.mrow || '');
+  const host = document.getElementById('cardHost');
+  const box0 = host && host.querySelector('.mrowedit[data-mrowed]');
+  const wasSame = !!(box0 && box0.dataset.mrowed === key && box0.dataset.word === id);
+  mrowCloseEdit();
+  if(wasSame) return;
+  const ov = mrowEdit(id, key);
+  row.insertAdjacentHTML('afterend', mrowEditHTML(id, key, ov ? ov.val : (row.dataset.old || ''),
+    row.dataset.text || key, ov ? ov.mark : 'w', row.dataset.old || ''));
+  const box = row.nextElementSibling;
+  bindMrowKeys(box);
+  const inp = box && box.querySelector('[data-mrowin]');
+  if(inp){ inp.focus(); inp.select(); }
+}
+function mrowSaveBox(box){
+  if(!box || !cur) return;
+  const id  = String(box.dataset.word || cur.w || '').toLowerCase();
+  const key = String(box.dataset.mrowed || '');
+  const inp = box.querySelector('[data-mrowin]');
+  const mk  = box.querySelector('.mrowmk.cur');
+  mrowSave(id, key, box.dataset.old || '', inp ? inp.value : '', mk ? mk.dataset.mrowmk : 'w', box.dataset.text || key, '');
+  mrowAfter();
+}
+function mrowOpenAdd(){
+  if(!cur) return;
+  const host = document.getElementById('cardHost');
+  const wrap = host && host.querySelector('.mrowaddwrap');
+  if(!wrap) return;
+  if(wrap.querySelector('[data-mrowaddbox]')){ mrowCloseEdit(); return; }
+  wrap.insertAdjacentHTML('beforeend', mrowAddHTML(cur.w));
+  const box = wrap.querySelector('[data-mrowaddbox]');
+  bindMrowKeys(box);
+  const t = box && box.querySelector('[data-addtext]');
+  if(t) t.focus();
+}
+function mrowAddBox(box){
+  if(!box || !cur) return;
+  const id = String(cur.w || '').toLowerCase();
+  const t = box.querySelector('[data-addtext]');
+  const v = box.querySelector('[data-addval]');
+  const tt = t ? String(t.value || '').trim() : '';
+  if(!tt){ if(t) t.focus(); return; }
+  mrowAdd(id, tt, v ? String(v.value || '').trim() : '');
+  mrowAfter();
+}
+
+function morphBookHTML(w){
+  const src = (w && typeof w === 'object') ? w : merged(BY_W[String(w || '').toLowerCase()] || {});
+  const id = String(src && src.w || '').toLowerCase();
+  const hits = morphHits(id);
+  const mseg = morphMineSegs(id);
+  const fam = famHTML(src);
+  if(!src || !id) return '';          // 没有词就什么都不画；有词就让这一块留着（底部要放「＋自己加一条」）
+  if(hits.length) morphRecord(id, hits);   // 记账照旧：自造件仍进 self 栏，只是不再渲染那一行
+  const rows = [];
+  let famDone = false;
+  const pushFam = () => { if(fam && !famDone){ rows.push(fam); famDone = true; } };
+  const pick = hits.length ? morphPick(hits) : { top:[], extra:0 };
+  pick.top.forEach(h => {
+    const it = h.it;
+    if(it.kind === 'self'){
+      /* 自造那行不再显示，原位让给同族词（多个自造件也只占一行） */
+      pushFam();
+      return;
+    }
+    const others = morphOthers(it.key, id);
+    const shown = others.slice(0, 5);
+    /* 可点条件：词库里另有别的词也用到这个构件；落点＝最近背过的那个，没有就取词库顺序第一个 */
+    const jump = shown.length ? shown[0] : '';
+    const tok = jump
+      ? `<b class="jm" data-mph="${esc(jump)}" title="点一下去看 ${esc(jump)}">${esc(h.f)}</b>`
+      : `<b>${esc(h.f)}</b>`;
+    let tail;
+    if(others.length){
+      const links = shown.map(k => `<a class="mw" data-mph="${esc(k)}">${esc(k)}</a>`).join(' / ');
+      tail = `，这个词库里另有 ${others.length} 个词用到它：${links}${others.length > shown.length ? `…（共 ${others.length} 个）` : ''}`;
+    } else {
+      tail = '，目前只在这一个词里见过';
+    }
+    const g = it.gloss ? `在词源里是「${esc(it.gloss)}」` : '';
+    const live = mrowEdit(id, it.key);      // 这一行你改过没有
+    if(live){
+      const tipO = `你改过，原为：${esc(live.old || it.gloss || '（没写释义）')}`;
+      rows.push(`<span class="mrow mrow-mine" data-mrow="${esc(it.key)}" data-word="${esc(id)}" data-old="${esc(it.gloss || '')}" data-text="${esc(h.f)}" title="${tipO}；点这一行再改，行末可复原">`
+        + `<span class="mtag mine">我</span>这个 <b>${esc(h.f)}</b> 你写的是「${esc(live.val || '（空）')}」`
+        + `<span class="mtag w">${segMarkLabel(live.mark)}</span>`
+        + `<button class="mrowback" data-restore="${esc(it.key)}" data-word="${esc(id)}" title="${tipO}">复原</button></span>`);
+      return;
+    }
+    rows.push(`<span class="mrow" data-mrow="${esc(it.key)}" data-word="${esc(id)}" data-old="${esc(it.gloss || '')}" data-text="${esc(h.f)}" title="点这一行，就地写你自己看得懂的说法（只存本机，随时能复原）"><span class="mtag s">${esc(morphTypeLabel(it))}</span>这个 ${tok}${mtgHTML(h.f, id)} ${g}${tail}</span>`);
+  });
+  const extra = pick.extra;
+  if(extra > 0) rows.push(`<span class="mrow mmore">…另有 ${extra} 个构件也记上了</span>`);
+
+  /* 我改：你在编辑面板里用 w 划的片段，单独一段，样式和措辞都不跟词源栏混 */
+  mseg.forEach(s => {
+    const others = mineOthers(s.key, id);
+    const shown = others.slice(0, 5);
+    const jump = shown.length ? shown[0] : '';
+    const tok = jump
+      ? `<b class="jm" data-mph="${esc(jump)}" title="点一下去看 ${esc(jump)}">${esc(s.t)}</b>`
+      : `<b>${esc(s.t)}</b>`;
+    const g = s.gloss ? `，你写的含义是「${esc(s.gloss)}」` : '';
+    const tail = others.length
+      ? `，另有 ${others.length} 个词你也这么划：${shown.map(k => `<a class="mw" data-mph="${esc(k)}">${esc(k)}</a>`).join(' / ')}`
+      : '，目前只有这一个词这么划';
+    rows.push(`<span class="mrow"><span class="mtag w">我</span>这个 ${tok} 是你自己划的${g}${tail}</span>`);
+  });
+  /* 自己加的：这个词没有词源构件，学生照样能按自己进度定一条词根 */
+  mrowAddList(id).forEach(e => {
+    const t = String(e.text || e.key || '');
+    const v = String(e.val || '');
+    rows.push(`<span class="mrow mrow-mine" data-mrow="${esc(e.key)}" data-word="${esc(id)}" data-old="${esc(v)}" data-text="${esc(t)}" title="你自己加的一条；点这一行能改，行末能复原">`
+      + `<span class="mtag mine">我</span>这个 <b>${esc(t)}</b> ${v ? `你写的含义是「${esc(v)}」` : '还没写含义'}`
+      + `<button class="mrowback" data-restore="${esc(e.key)}" data-word="${esc(id)}" title="你加的这一条，点一下删掉">复原</button></span>`);
+  });
+  pushFam();   // 没有自造件时，同族词落在末尾，不额外占块
+  rows.push(`<span class="mrowaddwrap"><button class="mrowadd" data-mrowadd="1" title="没有词源构件的词，也能按你自己进度定一个词根">＋自己加一条</button></span>`);
+  return `<div class="mph">${rows.join('')}</div>`;
+}
+
+/* 导入走合并：次数取大、日期取新、词表取并集 —— 手滑导回旧文件也不会丢账
+   三栏各归各的，导进来也不会串栏 */
+function mergeBook(src){
+  const book = bookOf();
+  const got = { source:0, self:0, mine:0 };
+  ['source', 'self', 'mine'].forEach(col => {
+    const dst = book[col];
+    const from = (src && src[col] && typeof src[col] === 'object') ? src[col] : {};
+    Object.keys(from).forEach(k => {
+      const s = from[k];
+      if(!s || typeof s !== 'object') return;
+      let d = dst[k];
+      if(!d || typeof d !== 'object'){
+        d = dst[k] = { key:k, type:s.type || '', gloss:s.gloss || '', text:s.text || k, n:0, last:'', words:{} };
+        got[col]++;
+      }
+      d.type = d.type || s.type || '';
+      d.gloss = d.gloss || s.gloss || '';
+      if(s.text) d.text = s.text;
+      d.n = Math.max(d.n | 0, s.n | 0);
+      if(String(s.last || '') > String(d.last || '')) d.last = s.last;
+      const sw = (s.words && typeof s.words === 'object') ? s.words : {};
+      if(!d.words || typeof d.words !== 'object') d.words = {};
+      Object.keys(sw).forEach(w => {
+        const x = sw[w] || {};
+        let dw = d.words[w];
+        if(!dw || typeof dw !== 'object') dw = d.words[w] = { n:0, last:'' };
+        dw.n = Math.max(dw.n | 0, x.n | 0);
+        if(String(x.last || '') > String(dw.last || '')) dw.last = x.last;
+      });
+    });
+  });
+  saveM();
+  return got;
+}
+function bookDump(){
+  const b = bookOf();
+  return { v:2, exportedAt:new Date().toISOString(), source:b.source, self:b.self, mine:b.mine };
+}
+
+/* ---------- 账本查看面板：三栏分开列，每个构件多少条、哪些词，词名可点 ---------- */
+const BK_COLS = [
+  { col:'source', title:'真词源', tip:'查得到词源的构件，改不动' },
+  { col:'self',   title:'自造',   tip:'我自己攒的串，没有词源依据' },
+  { col:'mine',   title:'我改',   tip:'结构块里改的、自己加的，以及编辑面板划的「我」' }
+];
+function bookStats(){
+  const b = bookOf();
+  const out = { source:[], self:[], mine:[] };
+  BK_COLS.forEach(c => {
+    const box = b[c.col] || {};
+    Object.keys(box).forEach(k => {
+      const e = box[k];
+      if(!e || typeof e !== 'object' || !e.words) return;
+      const ws = Object.keys(e.words).filter(w => BY_W[w]);
+      if(!ws.length) return;
+      ws.sort((a, x) => {
+        const wa = wordWeight(a), wx = wordWeight(x);
+        if(wa !== wx) return wx - wa;                       // 背得多、错得多的词排前面
+        return String(e.words[x].last || '') > String(e.words[a].last || '') ? 1 : -1;
+      });
+      out[c.col].push({
+        key: k,
+        text: (c.col === 'mine' ? String(e.text || k) : k),
+        type: e.type || '',
+        label: c.col === 'mine' ? '我' : morphTypeLabel(e),
+        gloss: e.gloss || '',
+        n: e.n | 0,
+        last: String(e.last || ''),
+        words: ws,
+        weight: entryWeight(e)
+      });
+    });
+    out[c.col].sort((a, x) => (x.weight - a.weight) || (x.n - a.n) || (a.key < x.key ? -1 : 1));
+  });
+  return out;
+}
+function bookStatsHTML(){
+  const st = bookStats();
+  const segN = mineEditRows().length;   // 结构块里手改过的构件条数（与「我改」栏细目同一份账，不重复计）
+  const rowHTML = (e, col) => {
+    const cls = col === 'source' ? 's' : (col === 'self' ? 'f' : 'w');
+    const ws = e.words.map(w => `<a data-bkw="${esc(w)}">${esc(w)}</a>`).join(' / ');
+    const gl = e.gloss ? `<span class="bkn">「${esc(e.gloss)}」</span>` : '';
+    const rs = col === 'mine'
+      ? `<button data-bkrs="${esc(e.key)}" title="这一条从「我改」栏删掉，结构块那一行退回词源原值">复原</button>`
+      : '';
+    return `<div class="bkrow">
+      <span class="bkk">${esc(e.text)}</span>
+      <span class="bkt ${cls}">${esc(e.label)}</span>${gl}
+      <span class="bkn">${e.n} 次</span>
+      <span class="bkw">${ws}</span>
+      <span class="bkwt" title="权重＝这些词的背记数据累加">${e.weight}</span>${rs}
+    </div>`;
+  };
+  const cols = BK_COLS.map(c => {
+    const list = st[c.col];
+    let body = list.length
+      ? list.map(e => rowHTML(e, c.col)).join('')
+      : `<div class="bkempty">这一栏还是空的</div>`;
+    /* 「我」那一栏再往下，把在结构块里手改过的构件一条条列出来，能单条退回原值 */
+    if(c.col === 'mine') body += mineEditsHTML();
+    const n = list.length;   // 细目是这一栏的展开，不再另加，免得同一条数两遍
+    return `<div class="bkcol">
+      <div class="bkh">${c.title}<span>${n} 条 · ${c.tip}</span></div>
+      ${body}
+    </div>`;
+  }).join('');
+  const top = `真词源 ${st.source.length} 条 · 自造 ${st.self.length} 条 · 我改 ${st.mine.length} 条`
+            + (segN ? `（其中构件行手改 ${segN} 条）` : '');
+  return { top: top, cols: cols };
+}
+function renderBook(){
+  const host = document.getElementById('bkBody');
+  if(!host) return;
+  const h = bookStatsHTML();
+  document.getElementById('bkTop').textContent = h.top;
+  host.innerHTML = h.cols;
+}
+
+/* 对外的只读口子：自测用，也方便以后别的页面来查账 */
+window.VM_MORPH = {
+  items: MITEMS,
+  types: MTYPES,
+  scope: morphScope,
+  label: morphTypeLabel,
+  hits : morphHits,
+  book : bookOf,
+  dump : bookDump,
+  merge: mergeBook,
+  mineSegs  : morphMineSegs,
+  mineSave  : morphRecordMine,
+  mineSync  : morphSyncMine,
+  mineOthers: mineOthers,
+  weight    : wordWeight,
+  cweight   : morphWeight,
+  stats     : bookStats,
+  pick      : morphPick,
+  weights   : MW
+};
+
+/* ================= 渲染：卡片 ================= */
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+/* ---------- 构件行手改层 ----------
+   只在本机盖一层：key 用词 + 片段拼，盖上之后卡片那一行显示你写的释义与标记。
+   词库文件 data/*.js 一个字都不动，随时能逐条退回原值，也能随「导出全部数据」带走。
+   存的结构：{ w, key, old, val, mark, at }，w=词、key=片段、old=原释义、val=你写的、
+   mark=r/m/w、at=改的日期。 */
+const SEGKEY = 'vm.segedit.v1';
+const segMarkLabel = m => (m === 'm' ? '记' : (m === 'w' ? '我' : '根'));
+function segKeyOf(t){ return String(t == null ? '' : t).trim().toLowerCase(); }
+function segAll(){
+  const o = ls.get(SEGKEY, {});
+  const out = [];
+  /* 存的是两层：词 → 构件键 → 那一条改动；这里一并摊平 */
+  if(o && typeof o === 'object'){
+    Object.keys(o).forEach(w => {
+      const m = o[w];
+      if(!m || typeof m !== 'object') return;
+      Object.keys(m).forEach(k => {
+        const e = m[k];
+        if(!e || typeof e !== 'object') return;
+        out.push({ w:String(e.w || w), key:String(e.key || k),
+          old:String(e.old == null ? '' : e.old),
+          val:String(e.val == null ? '' : e.val),
+          mark:(e.mark === 'm' || e.mark === 'r' || e.mark === 'w') ? e.mark : 'w',
+          at:String(e.at || '') });
+      });
+    });
+  }
+  return out.sort((a, b) => String(a.w) < String(b.w) ? -1 : (String(a.w) > String(b.w) ? 1 : (a.key < b.key ? -1 : 1)));
+}
+function segEdit(id, key){
+  const o = ls.get(SEGKEY, {});
+  const e = o && o[id] ? o[id][key] : null;
+  return (e && typeof e === 'object') ? e : null;
+}
+function segSave(id, t, old, val, mark){
+  const o = ls.get(SEGKEY, {});
+  if(!o || typeof o !== 'object') return;
+  const wid = String(id || '').toLowerCase();
+  const k = segKeyOf(t);
+  if(!wid || !k) return;
+  if(!o[wid] || typeof o[wid] !== 'object') o[wid] = {};
+  o[wid][k] = { w:wid, key:k, old:String(old == null ? '' : old), val:String(val == null ? '' : val),
+                mark:(mark === 'm' || mark === 'r' || mark === 'w') ? mark : 'w', at:ymd() };
+  ls.set(SEGKEY, o);
+}
+function segRestore(id, t){
+  const o = ls.get(SEGKEY, {});
+  const wid = String(id || '').toLowerCase();
+  const k = segKeyOf(t);
+  if(!o || !o[wid]) return;
+  delete o[wid][k];
+  if(!Object.keys(o[wid]).length) delete o[wid];
+  ls.set(SEGKEY, o);
+}
+
+function structHTML(w){
+  const st = Array.isArray(w.struct) ? w.struct : [];
+  const id = String(w.w || '').toLowerCase();
+  return st.map((s, i) => {
+    const k = (s.k === 'm' || s.k === 'w') ? s.k : 'r';
+    const ov = segEdit(id, segKeyOf(s.t));
+    const gloss = ov ? ov.val : (s.g || '');
+    const g = gloss ? `<span class="segglos">${esc(gloss)}</span>` : '';
+    let tag, tip, back = '';
+    if(ov){
+      tag = `<span class="tag myed" title="你改过">我</span>`
+          + (ov.mark !== 'w' ? `<span class="tag ${ov.mark}">${segMarkLabel(ov.mark)}</span>` : '');
+      tip = ` title="你改过，原为：${esc(segMarkLabel(k))} · ${esc(s.g || '（没写释义）')}"`;
+      back = `<button class="segback" data-segback="${i}" title="这一条退回词源原值">复原</button>`;
+    } else {
+      tag = `<span class="tag ${k}">${segMarkLabel(k)}</span>`;
+      tip = ' title="点这一行就地改：改释义、换根 / 记 / 我"';
+    }
+    return `<div class="seg${ov ? ' myed-row' : ''}" data-seg="${i}"${tip}>`
+         + `<span class="segtxt">${esc(s.t)}</span>${tag}${g}${back}</div>`;
+  }).join('');
+}
+
+/* 点一行进编辑：释义就地改，标记就地换，不弹面板 */
+function openSegEdit(row){
+  if(!row || !cur) return;
+  const w = merged(cur);
+  const st = Array.isArray(w.struct) ? w.struct : [];
+  const i = +row.dataset.seg;
+  const s = st[i];
+  if(!s) return;
+  const id = String(w.w || '').toLowerCase();
+  const k = (s.k === 'm' || s.k === 'w') ? s.k : 'r';
+  const ov = segEdit(id, segKeyOf(s.t));
+  const mark = ov ? ov.mark : (k === 'w' ? 'w' : 'r');   // 头一次改＝算你改的
+  row.dataset.segOpen = '1';
+  row.classList.remove('myed-row');
+  row.classList.add('editing');
+  row.removeAttribute('data-seg');
+  row.innerHTML = `<span class="segtxt">${esc(s.t)}</span>`
+    + `<input class="segin" type="text" data-segin="${i}" value="${esc(ov ? ov.val : (s.g || ''))}" placeholder="这一段的释义，留空也成">`
+    + ['r','m','w'].map(m => `<button class="segmk${m === mark ? ' cur' : ''}" data-segmk="${m}">${segMarkLabel(m)}</button>`).join('')
+    + `<button class="segbtn pri" data-segsave="${i}">存下</button>`
+    + `<button class="segbtn" data-segcancel="1">算了</button>`;
+  const inp = row.querySelector('.segin');
+  if(inp){ inp.focus(); inp.select(); }
+}
+
+/* 存下这一行：原值一直记着，所以随时能退回 */
+function segSaveRow(i){
+  const host = document.getElementById('cardHost');
+  const row = host && host.querySelector('.seg.editing');
+  if(!row || !cur) return;
+  const w = merged(cur);
+  const st = Array.isArray(w.struct) ? w.struct : [];
+  const s = st[i];
+  if(!s) return;
+  const inp = row.querySelector('.segin');
+  const mk = row.querySelector('.segmk.cur');
+  segSave(w.w, s.t, s.g, inp ? inp.value : '', mk ? mk.dataset.segmk : 'w');
+  renderCard();
+  if(document.getElementById('shBook').classList.contains('open')) renderBook();
+}
+
+function segRestoreRow(i){
+  if(!cur) return;
+  const w = merged(cur);
+  const st = Array.isArray(w.struct) ? w.struct : [];
+  const s = st[i];
+  if(!s) return;
+  segRestore(w.w, s.t);
+  renderCard();
+  if(document.getElementById('shBook').classList.contains('open')) renderBook();
+}
+
+/* 账本「我」栏最下面那块：改过哪条、原来是什么，一条一个复原键
+   数据源与结构块那一行同源（vm.morph.v1 的 mine 栏），卡片上看到什么，账本里就列什么 */
+function mineEditRows(){
+  const book = bookOf();
+  const mk = (m) => (m === 'm' || m === 'r' || m === 'w') ? m : 'w';
+  const out = [];
+  Object.keys(book.mine || {}).forEach(k => {
+    const e = book.mine[k];
+    if(!e || typeof e !== 'object') return;
+    const key = String(e.key || k);
+    const text = String(e.text || key);
+    if(e.src === 'add'){
+      out.push({ w:String(e.w || ''), key:key, text:text, old:'', val:String(e.val == null ? '' : e.val), mark:'w', add:true });
+      return;
+    }
+    const eds = (e.edits && typeof e.edits === 'object') ? e.edits : {};
+    const ks = Object.keys(eds);
+    if(!ks.length){
+      out.push({ w:String(e.w || ''), key:key, text:text, old:String(e.old == null ? '' : e.old),
+                 val:String(e.val == null ? '' : e.val), mark:mk(e.mark), add:false });
+      return;
+    }
+    ks.forEach(wid => {
+      const x = eds[wid] || {};
+      out.push({ w:String(x.w || wid), key:key, text:text, old:String(x.old == null ? '' : x.old),
+                 val:String(x.val == null ? '' : x.val), mark:mk(x.mark), add:false });
+    });
+  });
+  return out.sort((a, b) => (a.w < b.w ? -1 : (a.w > b.w ? 1 : (a.key < b.key ? -1 : 1))));
+}
+function mineEditsHTML(){
+  const list = mineEditRows();
+  if(!list.length) return '';
+  const rows = list.map(e => `<div class="bkedit">
+    <a data-bkw="${esc(e.w)}" title="点一下去看这个词">${esc(e.w)}</a>
+    <span class="bkk">${esc(e.text)}</span>
+    ${e.add ? '<span class="bkn">你加的</span>' : `<span class="bkn">原 <s>${esc(e.old || '（空）')}</s></span>`}
+    <span class="bkedv">现 ${esc(e.val || '（空）')}</span>
+    <span class="bkedmk">${esc(segMarkLabel(e.mark))}</span>
+    <button data-mrowrs="${esc(e.w)}" data-mrowrsk="${esc(e.key)}" title="这一条退回词源原值">复原</button>
+  </div>`).join('');
+  return `<div class="bkeditwrap"><div class="bkedith">在结构块里手改过的 ${list.length} 条<span>改的是释义与根 / 记 / 我，词库文件没动过</span></div>${rows}</div>`;
+}
+
+function renderCard(){
+  const host = document.getElementById('cardHost');
+  if(!cur){
+    host.innerHTML = `<div class="empty">${WORDS.length? '没有匹配的词' : '词库没加载到'}</div>`;
+    return;
+  }
+  const w = merged(cur);
+  const ed = isEdited(cur) ? '<span class="edited">我改的</span>' : '';
+  const hasIPA = analyzeIPA(w.ipa).items.length > 0;
+  host.innerHTML = `
+    <div class="card${DICT.on ? ' dicting' : ''}">
+      <div class="word">
+        <h1 class="play" data-a="w" title="点一下听发音">${esc(w.w)}</h1>
+        <span class="pos">${esc(w.pos||'')}</span>
+        <button class="ratecap vcap${ASET.voice !== 'alt' ? ' on' : ''}" data-t="voice" title="音色：点一下换一档（男女轮换 / 全女声 / 全男声）">${VOICE_SHORT[ASET.voice]}</button>
+        <button class="ratecap${ASET.rate !== 1 ? ' on' : ''}" data-t="rate" title="语速：点一下换一档（0.7 / 0.85 / 1.0 / 1.2）">${rateLabel(ASET.rate)}</button>
+      </div>
+      <div class="cn">${esc(w.cn||'')}${ed}</div>
+
+      ${libBarHTML()}
+
+      ${audioBarHTML()}
+
+      ${w.eg ? `<p class="egline egtop" data-a="s" title="点这行听这句"><span class="egicon">${SPK_ICON}</span><span class="egt">${egPillHTML(w.eg)}</span></p>` : ''}
+
+      <div id="dictSlot"></div>
+
+      <div class="blocks">
+        <div class="block">
+          <div class="blabel">读音</div>
+          <div class="read-main">${esc(w.read||'')}</div>
+          <div class="ipa-sub">${esc(w.syl||'')}</div>
+          <div class="phons">${phonHTML(w)}</div>
+          <div class="phtip">
+        <span>${hasIPA ? '点一个音，看它在这词里怎么念' : '这个词的音标暂时拆不开；整张音素表在顶栏「复习」里'}</span>
+      </div>
+          <div class="phoninfo" id="phonInfo"></div>
+        </div>
+
+        <div class="block">
+          <div class="blabel">结构<span class="blg"><span class="tag r" title="可查证的词源：拼法和意思能追到前缀、词根">根</span>词源<i>·</i><span class="tag m" title="助记切分：按字母物象硬拆的，没有词源依据">记</span>助记<i>·</i><span class="tag w" title="我自己在编辑面板里划的片段">我</span>划的</span></div>
+          <div class="struct">${structHTML(w)}</div>
+          <div class="literal" style="margin-top:9px">${esc(w.literal||'')}</div>
+          ${morphBookHTML(w)}
+        </div>
+
+        <div class="block">
+          <div class="blabel">记法</div>
+          <div class="memo">${esc(w.memo||'')}</div>
+        </div>
+      </div>
+
+    </div>`;
+
+  /* 听写开着：词头换成下划线，别把答案摆脸上 */
+  if(DICT.on){
+    const h = host.querySelector('.word h1');
+    if(h) h.textContent = maskWord(w.w);
+    mountDict();
+  }
+}
+
+/* ================= 列表 ================= */
+function pool(){
+  let arr = WORDS.filter(w => w.w.toLowerCase().indexOf(filterText) === 0 || (w.cn||'').indexOf(filterText) >= 0 || w.w.toLowerCase().indexOf(filterText) > 0);
+  if(reviewMode) arr = arr.filter(w => isDue(w.w.toLowerCase()) || (reviewMode && !progress[w.w.toLowerCase()]));
+  return arr;
+}
+let renderLimit = 200;   // 列表分批渲染，5000 词也不会卡
+
+/* ================= 我的词库 =================
+   两个单位，别混：
+     词表＝这本词源里要背的全部词（左栏那个列表，一直在）；
+     词库＝你自己在背词过程中收进来的词（overrides 里 custom 的那批），
+           以前收完就混进词表，找不着，现在单独一份清单，入口压在发音条上面。
+   收进来的词仍然跟着一起背、一样计档，独立的是「清单」，不是「要不要背」。
+   移出＝把这条手记和这个词一起撤掉，词源文件不动。
+==========================================*/
+function libWords(){
+  /* 词库＝overrides 里 custom 的那批，跟「在不在词表里」分开算：
+     没导入的词也能看卡、能听、能复制，只是还不算要背的。 */
+  return Object.keys(overrides)
+    .filter(k => overrides[k] && overrides[k].custom)
+    .map(k => BY_W[k] || Object.assign({ w:k }, overrides[k]));
+}
+function libObj(k){
+  return BY_W[k] || (overrides[k] ? Object.assign({ w:k }, overrides[k]) : null);
+}
+/* 这个词在不在要背的词表里：词源自带的一直都在，自己建的看 inlist */
+function libInList(k){
+  return !!SRC_KEYS[k] || !!(overrides[k] && overrides[k].inlist);
+}
+
+function libBarHTML(){
+  const n = libWords().length;
+  return `<div class="librow"><button class="libbtn${n ? '' : ' libzero'}" data-lib="open" title="词库：背单词时收进来的词，点开看全部">词库<span class="libn">${n}</span></button></div>`;
+}
+
+/* 只换数字，不重画整张卡（免得音素展开状态被清掉） */
+function paintLibBar(){
+  const b = document.querySelector('#cardHost .libbtn');
+  if(!b) return;
+  const n = libWords().length;
+  b.classList.toggle('libzero', !n);
+  const c = b.querySelector('.libn');
+  if(c) c.textContent = n;
+}
+
+function libRender(){
+  const host = document.getElementById('libList');
+  if(!host) return;
+  const arr = libWords();
+  if(!arr.length){
+    host.innerHTML = '<div class="libempty">词库还是空的。背单词时在音素面板里点「＋收」，词就进来了。</div>';
+    libTip('词库是空的');
+    return;
+  }
+  host.innerHTML = arr.map(w => {
+    const m = merged(w);
+    const k = String(w.w).toLowerCase();
+    const cn = String(m.cn || '').trim();
+    const o = overrides[k] || {};
+    /* 同一位置：没进词表＝蓝色「导入」，进了词表＝灰字说明，点一下只回一句提示，不跳页、不重复导入 */
+    const tag = (o.custom && o.inlist)
+      ? `<span class="lact done" data-lib="impok" data-w="${esc(w.w)}" title="已经在要背的词表里了">已导入</span>`
+      : (SRC_KEYS[k]
+          ? `<span class="lact done" data-lib="impok" data-w="${esc(w.w)}" title="词表里本来就有这个词">已在词表</span>`
+          : `<button class="lact" data-lib="imp" data-w="${esc(w.w)}" title="加进要背的词表：侧栏里能看到，也跟着一起背">导入</button>`);
+    return `<div class="libitem" data-lib="go" data-w="${esc(w.w)}">
+      <span class="lw">${pillHTML(w.w, k)}</span>
+      <span class="lc">${cn ? esc(cn) : '待补中文义'}</span>
+      <span class="lops">${tag}<button class="lact" data-lib="cpy" data-w="${esc(w.w)}" title="把这一个词复制走">复制</button><button class="ldel" data-lib="del" data-w="${esc(w.w)}" title="从词库移出">移出</button></span>
+    </div>`;
+  }).join('');
+  libTip('点词听发音 · 点空白翻到这个词');
+}
+
+/* 面板顶部那一行轻提示：复制 / 导入完就地回一句话，不弹窗、不占新行 */
+function libTip(t){
+  const el = document.getElementById('libTip');
+  if(el) el.textContent = t;
+}
+
+/* 复制：先走剪贴板，被拒（http、旧内核）就把文本摊在面板里让人手动选，不静默失败 */
+function copyText(txt){
+  return new Promise(resolve => {
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(() => resolve(true), () => resolve(false));
+        return;
+      }
+    }catch(e){}
+    resolve(false);
+  });
+}
+function libFallback(txt){
+  const host = document.getElementById('libList');
+  if(!host) return;
+  let box = document.getElementById('libCopyTxt');
+  if(!box || !document.body.contains(box)){
+    box = document.createElement('textarea');
+    box.id = 'libCopyTxt';
+    box.className = 'libcopy';
+    box.readOnly = true;
+    box.setAttribute('spellcheck', 'false');
+    host.parentNode.insertBefore(box, host);
+  }
+  box.value = txt;
+  box.hidden = false;
+  box.focus();
+  box.select();
+}
+function libCopyOne(k){
+  copyText(k).then(ok => {
+    if(ok){ libTip('已复制：' + k); return; }
+    libFallback(k);
+    libTip('浏览器不让自动复制，下面框里已经选好，按 Ctrl+C');
+  });
+}
+function libCopyAll(){
+  const arr = libWords().map(w => String(w.w));
+  if(!arr.length){ libTip('词库是空的，没有可复制的词'); return; }
+  const txt = arr.join('\n');
+  copyText(txt).then(ok => {
+    if(ok){ libTip('已复制整库 ' + arr.length + ' 个词，一行一个，可直接粘到别处'); return; }
+    libFallback(txt);
+    libTip('浏览器不让自动复制，下面框里已经选好（' + arr.length + ' 个词），按 Ctrl+C');
+  });
+}
+
+/* 导入词表：把它从「收着」变成「要背」，侧栏词表、复习、计数一起跟上 */
+function libImportOne(k){
+  const o = overrides[k];
+  if(!o || !o.custom){ libTip('词库里没有这个词了'); return; }
+  if(SRC_KEYS[k] || o.inlist){ libTip(k + ' 已经在词表里了，不用再导入'); return; }
+  o.inlist = ymd();
+  saveO();
+  absorbCustom();
+  renderList();
+  paintLibBar();
+  if(typeof updateDue === 'function') updateDue();
+  libRender();
+  libTip('已导入词表：' + k + '（词表共 ' + WORDS.length + ' 词）');
+}
+function libImportAll(){
+  const arr = libWords().map(w => String(w.w).toLowerCase());
+  if(!arr.length){ libTip('词库是空的，没有可导入的词'); return; }
+  let n = 0, skip = 0;
+  arr.forEach(k => {
+    const o = overrides[k];
+    if(!o || !o.custom) return;
+    if(SRC_KEYS[k] || o.inlist){ skip++; return; }
+    o.inlist = ymd();
+    n++;
+  });
+  if(!n){ libTip('词库里 ' + arr.length + ' 个词都已经在词表里了'); return; }
+  saveO();
+  absorbCustom();
+  renderList();
+  paintLibBar();
+  if(typeof updateDue === 'function') updateDue();
+  libRender();
+  libTip('全部导入完成：新增 ' + n + ' 个' + (skip ? '，已有 ' + skip + ' 个' : '') + '；词库 ' + arr.length + ' 个 · 词表共 ' + WORDS.length + ' 词');
+}
+
+/* 验收用只读出口：数值全部现算，不缓存 */
+window.VM_LIB = {
+  words: () => libWords().map(w => String(w.w)),
+  text: () => libWords().map(w => String(w.w)).join('\n'),
+  inList: k => libInList(String(k || '').toLowerCase()),
+  importOne: k => libImportOne(String(k || '').toLowerCase()),
+  importAll: () => { handleLibAct('impall', null); return { lib: libWords().length, list: WORDS.length, pool: pool().length }; },
+  listLen: () => WORDS.length,
+  poolLen: () => pool().length,
+  srcLen: () => Object.keys(SRC_KEYS).length
+};
+
+function libOpen(){
+  libRender();
+  document.getElementById('shLib').classList.add('open');
+}
+function libShut(){ document.getElementById('shLib').classList.remove('open'); }
+
+/* 移出词库：这条手记和这个词一起撤，正在看的词撤了就直接翻下一个 */
+function libRemove(k){
+  const o = overrides[k];
+  if(!(o && o.custom)) return;
+  if(typeof libTip === 'function') libTip('已移出：' + k);
+  if(SRC_KEYS[k]){
+    /* 词表里本来就有的词：只退掉「收进词库」这一层，词、编辑内容、复习进度全留着 */
+    delete o.custom;
+    delete o.mine;
+    if(!Object.keys(o).length) delete overrides[k];
+    saveO();
+    renderList();
+    libRender();
+    renderCard();
+    vmToast('已从词库移出：' + k + '（词表里还在）');
+    return;
+  }
+  delete overrides[k];
+  saveO();
+  WORDS = WORDS.filter(x => x.w.toLowerCase() !== k);
+  delete BY_W[k];
+  if(cur && cur.w.toLowerCase() === k) cur = null;
+  renderList();
+  libRender();
+  if(!cur){
+    const arr = pool();
+    if(arr.length) go(arr[0]); else renderCard();
+  } else {
+    renderCard();
+  }
+  vmToast('已移出词库：' + k);
+}
+
+function handleLibAct(act, el){
+  if(act === 'open'){ libOpen(); return; }
+  if(act === 'close'){ libShut(); return; }
+  if(act === 'go'){
+    if(!el) return;
+    const k = String(el.dataset.w || '').toLowerCase();
+    const w = libObj(k);
+    libShut();
+    if(w) go(w);
+    return;
+  }
+  if(act === 'del'){ libRemove(String(el.dataset.w || '').toLowerCase()); return; }
+  if(act === 'imp'){ libImportOne(String(el.dataset.w || '').toLowerCase()); return; }
+  /* 已经在词表里的那颗：点它只回一句话，别让它顺带把面板关掉跳到别的词 */
+  if(act === 'impok'){ libTip(String(el.dataset.w || '') + ' 已经在要背的词表里了'); return; }
+  if(act === 'cpy'){ libCopyOne(String(el.dataset.w || '')); return; }
+  if(act === 'impall'){ libImportAll(); return; }
+  if(act === 'cpyall'){ libCopyAll(); return; }
+}
+function libAct(act, el){ handleLibAct(act, el); }
+
+function renderList(){
+  const box = document.getElementById('alist');
+  paintLibBar();          // 收词 / 移词之后，按钮上的数字跟着走
+  const arr = pool();
+  if(!arr.length){ box.innerHTML = '<div class="empty" style="padding:30px 0">空</div>'; updateDue(); return; }
+  let html = arr.slice(0, renderLimit).map(w => {
+    const id = w.w.toLowerCase();
+    const st = progress[id];
+    const cls = st && st.box >= 2 ? 'b2' : (st && st.box === 1 ? 'b1' : '');
+    const mark = isEdited(w) ? '·' : '';
+    return `<div class="row${cur && cur.w===w.w?' cur':''}" data-w="${esc(w.w)}">
+      <span class="dot ${cls}"></span>
+      <span class="rw">${pillHTML(w.w, id)}${mark}</span>
+      <span class="rc">${st&&st.box>=3?'熟':''}</span>
+    </div>`;
+  }).join('');
+  if(arr.length > renderLimit){
+    html += `<div class="row" style="justify-content:center;color:var(--ink3);font-size:12px">还有 ${arr.length - renderLimit} 个 · 继续下滑加载</div>`;
+  }
+  box.innerHTML = html;
+  updateDue();
+}
+
+function updateDue(){
+  const nDue = WORDS.filter(w => isDue(w.w.toLowerCase())).length;
+  document.getElementById('dueCount').textContent = nDue ? nDue : '';
+  document.getElementById('storeStat').textContent = WORDS.length + ' 词';
+}
+
+/* 只更新单行状态，不重写整个列表 —— 5000 词也秒响应 */
+function refreshRow(id){
+  const st = progress[id] || { box:0 };
+  const rows = document.querySelectorAll('.row');
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i];
+    if(!r.dataset.w || r.dataset.w.toLowerCase() !== id) continue;
+    const dot = r.querySelector('.dot');
+    if(dot) dot.className = 'dot ' + (st.box >= 2 ? 'b2' : (st.box === 1 ? 'b1' : ''));
+    const rc = r.querySelector('.rc');
+    if(rc) rc.textContent = st.box >= 3 ? '熟' : '';
+  }
+  updateDue();
+}
+
+function markCur(){
+  const rows = document.querySelectorAll('.row');
+  for(let i=0;i<rows.length;i++){
+    const r = rows[i];
+    if(!r.dataset.w) continue;
+    r.classList.toggle('cur', !!cur && r.dataset.w === cur.w);
+  }
+}
+
+/* ================= 导航 ================= */
+function go(w){
+  AU.stop();            // 换词就掐掉上一个音，不叠着放
+  closeBub();           // 翻词顺手把音素气泡收掉
+  cur = w;
+  if(DICT.on){ DICT.ans = ''; DICT.res = null; DICT.msg = ''; }   // 听写中翻词＝下一题
+  renderCard();
+  markCur();
+  document.getElementById('stage').scrollTop = 0;
+  if(DICT.on) AU.play('w');    // 接着念新词，手不用挪
+}
+function nextWord(){
+  const arr = pool();
+  if(!arr.length) return;
+  const i = cur ? arr.findIndex(w => w.w === cur.w) : -1;
+  go(arr[(i + 1) % arr.length]);
+}
+function prevWord(){
+  const arr = pool();
+  if(!arr.length) return;
+  const i = cur ? arr.findIndex(w => w.w === cur.w) : 0;
+  go(arr[(i - 1 + arr.length) % arr.length]);
+}
+
+/* ================= 交互绑定 ================= */
+document.getElementById('q').addEventListener('input', e => {
+  filterText = e.target.value.trim().toLowerCase();
+  renderLimit = 200;
+  renderList();
+  const arr = pool();
+  if(arr.length && (!cur || arr.indexOf(cur) < 0)) go(arr[0]);
+  else markCur();
+});
+
+/* 搜索框敲回车：词库里有就翻出来，没有就现开一张空卡给你写 */
+document.getElementById('q').addEventListener('keydown', e => {
+  if(e.key !== 'Enter') return;
+  const v = document.getElementById('q').value.trim();
+  if(!v) return;
+  const kw = v.toLowerCase();
+  if(BY_W[kw]){ go(BY_W[kw]); return; }
+  const w = newCard(v, { toList: true });
+  if(!w) return;
+  document.getElementById('q').value = '';
+  filterText = '';
+  renderList();
+  go(w);
+  openEdit();
+});
+
+/* 侧栏下滑分批加载 */
+document.getElementById('alist').addEventListener('scroll', function(){
+  if(this.scrollTop + this.clientHeight > this.scrollHeight - 320){
+    if(renderLimit < pool().length){
+      renderLimit += 300;
+      renderList();
+      markCur();
+    }
+  }
+});
+
+/* 词表：宽屏是常驻侧栏（切 hide），窄屏是右侧抽屉（切 show + 遮罩） */
+const sideEl = document.getElementById('side');
+const sideMask = document.getElementById('sideMask');
+function sideNarrow(){ return window.matchMedia('(max-width:820px)').matches; }
+function sideSet(on){
+  if(sideNarrow()){
+    sideEl.classList.remove('hide');
+    sideEl.classList.toggle('show', on);
+    sideMask.classList.toggle('show', on);
+  }else{
+    sideEl.classList.remove('show');
+    sideMask.classList.remove('show');
+    sideEl.classList.toggle('hide', !on);
+  }
+}
+document.getElementById('btnList').addEventListener('click', () => {
+  sideSet(sideNarrow() ? !sideEl.classList.contains('show') : sideEl.classList.contains('hide'));
+});
+sideMask.addEventListener('click', () => sideSet(false));
+document.getElementById('sideX').addEventListener('click', () => sideSet(false));
+window.addEventListener('resize', () => {
+  if(!sideNarrow()){
+    sideEl.classList.remove('show');
+    sideMask.classList.remove('show');
+  }else{
+    sideEl.classList.remove('hide');
+  }
+});
+
+/* 复习：一级按钮只负责展开二级选项，勾选/打开都在菜单里完成 */
+function setReview(on){
+  reviewMode = !!on;
+  const btn = document.getElementById('btnReview');
+  if(btn) btn.classList.toggle('on', reviewMode);
+  renderList();
+  const arr = pool();
+  if(arr.length) go(arr[0]);
+}
+
+function syncRevMenu(){
+  const m = document.getElementById('revMenu');
+  if(!m) return;
+  const due = m.querySelector('[data-rev="due"]');
+  if(due) due.classList.toggle('on', reviewMode);
+  const all = m.querySelector('[data-rev="all"] b');
+  if(all){
+    const n = (window.PHON2_PARTS && PHON2_PARTS[0] && PHON2_PARTS[0].items)
+      ? Object.keys(PHON2_PARTS[0].items).length : 48;
+    all.textContent = '全部 ' + n + ' 个音素';
+  }
+}
+
+/* 菜单挂在 fixed 上再算位置：窄屏也不会顶出左右边 */
+function placeRevMenu(){
+  const m = document.getElementById('revMenu');
+  const btn = document.getElementById('btnReview');
+  if(!m || !btn || !m.classList.contains('on')) return;
+  const r = btn.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  m.style.visibility = 'hidden';
+  const w = m.offsetWidth, h = m.offsetHeight;
+  let left = r.right - w;
+  left = Math.max(8, Math.min(left, vw - w - 8));
+  let top = r.bottom + 6;
+  if(top + h > vh - 8) top = Math.max(8, r.top - 6 - h);
+  m.style.left = left + 'px';
+  m.style.top = top + 'px';
+  m.style.visibility = '';
+}
+
+document.getElementById('btnReview').addEventListener('click', function(e){
+  e.stopPropagation();
+  const m = document.getElementById('revMenu');
+  if(!m) return;
+  syncRevMenu();
+  m.classList.toggle('on');
+  if(m.classList.contains('on')) placeRevMenu();
+});
+
+window.addEventListener('resize', placeRevMenu);
+
+document.getElementById('revMenu').addEventListener('click', e => {
+  e.stopPropagation();
+  const b = e.target.closest('[data-rev]');
+  if(!b) return;
+  const m = document.getElementById('revMenu');
+  if(b.dataset.rev === 'due'){ setReview(!reviewMode); if(m) m.classList.remove('on'); return; }
+  if(b.dataset.rev === 'all'){ if(m) m.classList.remove('on'); PALL.open(); return; }
+});
+
+/* 点空白处收菜单 */
+document.addEventListener('click', () => {
+  const m = document.getElementById('revMenu');
+  if(m) m.classList.remove('on');
+});
+
+/* 点音素：只有被点的那一个亮，说明只讲这一个音在本词里怎么用 */
+document.getElementById('cardHost').addEventListener('click', e => {
+  /* 发音条上面那颗词库：点开自己收的清单 */
+  const libB = e.target.closest('[data-lib]');
+  if(libB){ e.stopPropagation(); libAct(libB.dataset.lib, libB); return; }
+  /* P2-② 胶囊：例句 / 单词表 里的词，点一下弹小卡（别落在整行点听上） */
+  const pillHit = e.target.closest('[data-pill]');
+  if(pillHit){
+    e.stopPropagation();
+    const k = pillHit.dataset.pill;
+    if(PC.el && PC.el === pillHit && document.getElementById('pCard').classList.contains('on')){ closePillCard(); return; }
+    openPillCard(k, pillHit);
+    return;
+  }
+  /* P2-① 构件后面的极轻标记：点开就地一行助记，再点收起（先于构件行的编辑拦下来） */
+  const mtgHit = e.target.closest('[data-mtg]');
+  if(mtgHit){ e.stopPropagation(); mtgToggle(mtgHit); return; }
+  /* 结构块的构件行：复原 / 换标记 / 存下 / 算了 / 点一行进编辑 */
+  const segBack = e.target.closest('[data-segback]');
+  if(segBack){ e.stopPropagation(); segRestoreRow(+segBack.dataset.segback); return; }
+  const segMk = e.target.closest('[data-segmk]');
+  if(segMk){
+    e.stopPropagation();
+    const box = segMk.closest('.seg.editing');
+    if(box){
+      const all = box.querySelectorAll('.segmk');
+      for(let i = 0; i < all.length; i++) all[i].classList.remove('cur');
+      segMk.classList.add('cur');
+    }
+    return;
+  }
+  const segSaveBtn = e.target.closest('[data-segsave]');
+  if(segSaveBtn){ e.stopPropagation(); segSaveRow(+segSaveBtn.dataset.segsave); return; }
+  if(e.target.closest('[data-segcancel]')){ e.stopPropagation(); renderCard(); return; }
+  const segRow = e.target.closest('[data-seg]');
+  if(segRow && !segRow.dataset.segOpen){ e.stopPropagation(); openSegEdit(segRow); return; }
+
+  /* 听写区：判分 / 重听 / 跳过 / 下一个 / 再拼一次 / 退出 */
+  const dbtn = e.target.closest('[data-d]');
+  if(dbtn){
+    e.stopPropagation();
+    const a = dbtn.dataset.d;
+    if(a === 'submit'){ dictSubmit(); return; }
+    if(a === 'again'){ DICT.msg = ''; AU.play('w'); return; }
+    if(a === 'retry'){ DICT.ans = ''; DICT.res = null; DICT.msg = ''; mountDict(); AU.play('w'); return; }
+    if(a === 'skip'){ DICT.ans = ''; DICT.res = null; DICT.msg = ''; nextWord(); return; }
+    if(a === 'next'){ DICT.ans = ''; DICT.res = null; DICT.msg = ''; nextWord(); return; }
+    if(a === 'exit'){ dictExit(); return; }
+    return;
+  }
+  /* 发音条：播放 / 换音色 / 换语速 / 复读 */
+  const playBtn = e.target.closest('[data-a]');
+  if(playBtn){
+    e.stopPropagation();
+    if(playBtn.dataset.a === 'dict'){ dictStart(); return; }
+    AU.say(playBtn.dataset.a);       // 只念点的这一条：单词或例句
+    return;
+  }
+  const tog = e.target.closest('[data-t]');
+  if(tog){
+    e.stopPropagation();
+    const t = tog.dataset.t;
+    if(t === 'rep'){
+      repToggle();                   // 复读开关：亮着就每条连念 2 遍
+    } else if(t === 'voice'){
+      ASET.voice = VOICE_ORDER[(VOICE_ORDER.indexOf(ASET.voice) + 1) % VOICE_ORDER.length];
+      saveA(); paintVoiceCap(); paintAudioBar();   // 只影响怎么念，账本一条不动
+    } else if(t === 'rate'){
+      const nx = RATE_ORDER[(RATE_ORDER.indexOf(ASET.rate) + 1) % RATE_ORDER.length];
+      AU.setRate(nx); paintAudioBar();
+    }
+    return;
+  }
+  /* 构件行手改：复原 / 换根·记·我 / 保存 / 取消 / ＋自己加一条 */
+  const mrBack = e.target.closest('[data-restore]');
+  if(mrBack){ e.stopPropagation(); mrowRestore(mrBack.dataset.word, mrBack.dataset.restore, false); mrowAfter(); return; }
+  const mrMk = e.target.closest('[data-mrowmk]');
+  if(mrMk){
+    e.stopPropagation();
+    const box = mrMk.closest('.mrowedit');
+    if(box){
+      box.querySelectorAll('.mrowmk').forEach(x => x.classList.remove('cur'));
+      mrMk.classList.add('cur');
+    }
+    return;
+  }
+  if(e.target.closest('[data-mrowsave]')){ e.stopPropagation(); mrowSaveBox(e.target.closest('.mrowedit')); return; }
+  if(e.target.closest('[data-mrowcancel]')){ e.stopPropagation(); mrowCloseEdit(); return; }
+  if(e.target.closest('[data-mrowaddsave]')){ e.stopPropagation(); mrowAddBox(e.target.closest('.mrowedit')); return; }
+  if(e.target.closest('[data-mrowaddcancel]')){ e.stopPropagation(); mrowCloseEdit(); return; }
+  if(e.target.closest('[data-mrowadd]')){ e.stopPropagation(); mrowOpenAdd(); return; }
+
+  /* 词素账本：点构件提示里的词名，直接跳到那个词 */
+  const mw = e.target.closest('[data-mph]');
+  if(mw){
+    e.stopPropagation();
+    const t = String(mw.dataset.mph || '').toLowerCase();
+    const target = BY_W[t];
+    if(target){ go(target); }
+    else { mw.title = '这个词你已经不在词库里了'; }
+    return;
+  }
+  /* 点词源构件那一行本身 ＝ 就地开编辑条（词名 <b class=jm>/<a class=mw> 已经被上面拦走做跳转了） */
+  const mrRow = e.target.closest('.mrow[data-mrow]');
+  if(mrRow){ e.stopPropagation(); mrowOpen(mrRow); return; }
+  /* 全部音素面板内的动作（pick/say/close）：入口已收进顶栏「复习」，这里只管面板本身 */
+  const paEl = e.target.closest('[data-pa]');
+  if(paEl){ e.stopPropagation(); PALL.act(paEl.dataset.pa, paEl); return; }
+  const actEl = e.target.closest('[data-act]');
+  if(actEl && /^phon/.test(actEl.dataset.act)){
+    e.stopPropagation();
+    handlePhonAct(actEl.dataset.act);
+    return;
+  }
+  const chip = e.target.closest('.pc');
+  if(!chip) return;
+  /* 听写态：点音标既不开气泡也不动老面板，免得看答案、免得误判 */
+  if(DICT.on) return;
+  const idx = +chip.dataset.p;
+  if(idx < 0){ openEdit(); return; }
+  const cw = cur ? merged(cur) : null;
+  const cai = cw ? analyzeIPA(cw.ipa) : { items: [] };
+  const cit = cai.items[idx];
+  /* 每个音素格都走「贴格气泡」：数据齐的给对比词/同类词，缺的走兜底一句话；
+     页面下方那块老详情区不再承担弹出职责（顶栏「复习」里的全音素表另算）。 */
+  if(!cit || !cit.s) return;
+  e.stopPropagation();
+  const bh = document.getElementById('pBub');
+  const on = !!(bh && bh.classList.contains('on'));
+  if(on && bub.sym === cit.s && bub.idx === idx){ closeBub(); return; }
+  closeBub();
+  openBub(cw, idx, chip);
+});
+
+document.getElementById('alist').addEventListener('click', e => {
+  /* P2-② 单词表里那颗胶囊：先弹小卡，别被整行「点进详情」抢走 */
+  const pill = e.target.closest('[data-pill]');
+  if(pill){
+    e.stopPropagation();
+    if(PC.el && PC.el === pill && document.getElementById('pCard').classList.contains('on')){ closePillCard(); return; }
+    openPillCard(pill.dataset.pill, pill);
+    return;
+  }
+  const row = e.target.closest('.row');
+  if(!row) return;
+  const w = BY_W[row.dataset.w.toLowerCase()];
+  if(w){
+    go(w);
+    if(sideNarrow()) sideSet(false);   /* 手机点完就收起，直接看卡 */
+  }
+});
+
+document.querySelectorAll('.rbtn').forEach(b => {
+  b.addEventListener('click', () => {
+    if(!cur) return;
+    const id = cur.w.toLowerCase();
+    rate(cur.w, +b.dataset.k);
+    refreshRow(id);
+    const q = document.getElementById('q').value;
+    if(q){ document.getElementById('q').value=''; filterText=''; renderList(); }
+    nextWord();
+  });
+});
+
+document.addEventListener('keydown', e => {
+  /* 全部音素面板开着时，只认 Esc，别的键不翻词、不改档 */
+  if(PALL.on){
+    if(e.key === 'Escape'){ e.preventDefault(); PALL.close(); }
+    else if(e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA'){ e.preventDefault(); }
+    return;
+  }
+  if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA'){
+    /* 听写输入框里回车＝判分、Esc＝退出，其余交给输入框自己 */
+    if(DICT.on && e.target.id === 'dictIn'){
+      if(e.key === 'Enter'){ e.preventDefault(); dictSubmit(); }
+      else if(e.key === 'Escape'){ e.preventDefault(); dictExit(); }
+    }
+    return;
+  }
+
+  /* 听写开着：只认字母 / Backspace / Enter / Esc，别的键一律让路 */
+  if(DICT.on){
+    if(e.key === 'Escape'){ e.preventDefault(); dictExit(); return; }
+    if(e.key === 'Enter'){ e.preventDefault(); dictSubmit(); return; }
+    const inp = document.getElementById('dictIn');
+    if(e.key === 'Backspace'){
+      e.preventDefault();
+      if(inp){ inp.focus(); inp.value = inp.value.slice(0, -1); DICT.ans = inp.value; }
+      return;
+    }
+    if(/^[a-zA-Z]$/.test(e.key)){
+      e.preventDefault();
+      if(inp){ inp.focus(); inp.value += e.key; DICT.ans = inp.value; }
+      return;
+    }
+    e.preventDefault();   // 1 2 3、空格、e、/、P、O、L 这些在听写时不生效
+    return;
+  }
+
+  if(e.key === '1') document.querySelector('.rbtn[data-k="0"]').click();
+  else if(e.key === '2') document.querySelector('.rbtn[data-k="1"]').click();
+  else if(e.key === '3') document.querySelector('.rbtn[data-k="2"]').click();
+  else if(e.key === 'ArrowRight' || e.key === ' '){ e.preventDefault(); nextWord(); }
+  else if(e.key === 'ArrowLeft'){ prevWord(); }
+  else if(e.key === 'p' || e.key === 'P'){ e.preventDefault(); AU.say('w'); }
+  else if(e.key === 'o' || e.key === 'O'){ e.preventDefault(); AU.say('s'); }
+  else if(e.key === 'l' || e.key === 'L'){ e.preventDefault(); repToggle(); }   // 跟点那颗复读键完全一样
+  else if(e.key === 'd' || e.key === 'D'){ e.preventDefault(); dictStart(); }
+  else if(e.key === 'e' || e.key === 'E') openEdit();
+  else if(e.key === '/'){ e.preventDefault(); document.getElementById('q').focus(); }
+});
+
+/* ================= 编辑 ================= */
+function openEdit(){
+  if(!cur) return;
+  const w = merged(cur);
+  document.getElementById('eCn').value = w.cn || '';
+  document.getElementById('eIpa').value = w.ipa || '';
+  document.getElementById('eSyl').value = w.syl || '';
+  document.getElementById('eRead').value = w.read || '';
+  document.getElementById('eLiteral').value = w.literal || '';
+  document.getElementById('eMemo').value = w.memo || '';
+  document.getElementById('eStruct').value = (w.struct||[]).map(s => `${s.t} | ${s.g||''} | ${(s.k==='m'||s.k==='w')?s.k:'r'}`).join('\n');
+  document.getElementById('shEdit').classList.add('open');
+}
+document.getElementById('eCancel').addEventListener('click', () => document.getElementById('shEdit').classList.remove('open'));
+document.getElementById('eReset').addEventListener('click', () => {
+  if(!cur) return;
+  const id = cur.w.toLowerCase();
+  const wasCustom = !!(overrides[id] && overrides[id].custom);
+  delete overrides[id];
+  saveO();
+  document.getElementById('shEdit').classList.remove('open');
+  if(wasCustom){
+    // 自己开的空卡，还原就等于不要了，从列表里一并移走
+    WORDS = WORDS.filter(w => w.w.toLowerCase() !== id);
+    delete BY_W[id];
+    cur = null;
+    renderList();
+    const arr = pool();
+    if(arr.length) go(arr[0]); else renderCard();
+    return;
+  }
+  renderCard(); renderList();
+});
+document.getElementById('eSave').addEventListener('click', () => {
+  if(!cur) return;
+  const lines = document.getElementById('eStruct').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const struct = lines.map(l => {
+    const p = l.split('|').map(s => s.trim());
+    const kk = p[2] === 'm' ? 'm' : (p[2] === 'w' ? 'w' : 'r');
+    return { t:p[0]||'', g:p[1]||'', k:kk };
+  });
+  const id = cur.w.toLowerCase();
+  const old = overrides[id] || {};
+  overrides[id] = {
+    w: cur.w,
+    inDict: !!BY_W[id] && !old.custom,
+    custom: !!old.custom,
+    cn: document.getElementById('eCn').value.trim(),
+    pos: merged(cur).pos || '',
+    ipa: document.getElementById('eIpa').value.trim(),
+    syl: document.getElementById('eSyl').value.trim(),
+    read: document.getElementById('eRead').value.trim(),
+    literal: document.getElementById('eLiteral').value.trim(),
+    memo: document.getElementById('eMemo').value.trim(),
+    struct: struct,
+    mine: true,
+    editedAt: ymd()
+  };
+  saveO();
+  /* 你划的 w 片段进「我改」栏：保存即入账，删掉的行自动撤账，每次保存算一次 */
+  morphRecordMine(id, morphMineSegs(id));
+  document.getElementById('shEdit').classList.remove('open');
+  renderCard(); renderList();
+});
+document.addEventListener('dblclick', e => { if(e.target.closest('.card')) openEdit(); });
+
+/* ================= 词素账本面板 ================= */
+document.getElementById('btnBook').addEventListener('click', () => {
+  renderBook();
+  paintVoiceCap();
+  document.getElementById('shBook').classList.add('open');
+});
+/* 音色换了只影响怎么念，账本里记的账一条不动 */
+document.getElementById('voiceCap').addEventListener('click', () => {
+  ASET.voice = VOICE_ORDER[(VOICE_ORDER.indexOf(ASET.voice) + 1) % VOICE_ORDER.length];
+  saveA(); paintVoiceCap(); paintAudioBar();
+});
+document.getElementById('bkClose').addEventListener('click', () => document.getElementById('shBook').classList.remove('open'));
+document.getElementById('shBook').addEventListener('click', e => {
+  if(e.target === document.getElementById('shBook')) document.getElementById('shBook').classList.remove('open');
+});
+/* 面板里点词名 → 直接跳到那个词 */
+document.getElementById('bkBody').addEventListener('click', e => {
+  /* 「我改」栏单条复原：整条从账本删掉，结构块那一行退回词源原值 */
+  const bkr = e.target.closest('[data-bkrs]');
+  if(bkr){
+    mrowRestore('', bkr.dataset.bkrs, true);
+    renderBook(); renderCard();
+    return;
+  }
+  /* 结构块里手改过的那一条：账本里单条复原，卡片那一行同步退回词源原值 */
+  const mrs = e.target.closest('[data-mrowrs]');
+  if(mrs){
+    mrowRestore(mrs.dataset.mrowrs, mrs.dataset.mrowrsk, false);
+    renderBook();
+    renderCard();
+    return;
+  }
+  /* 手改过的构件：一条一个复原键（旧 segedit 层，保留兼容） */
+  const rs = e.target.closest('[data-segrs]');
+  if(rs){
+    segRestore(rs.dataset.segrs, rs.dataset.segrskey);
+    renderBook();
+    renderCard();
+    return;
+  }
+  const a = e.target.closest('[data-bkw]');
+  if(!a) return;
+  const w = BY_W[String(a.dataset.bkw || '').toLowerCase()];
+  if(!w) return;
+  document.getElementById('shBook').classList.remove('open');
+  go(w);
+});
+
+/* 词库面板挂在 body 上，不经过 #cardHost 的委托，单独接一层 */
+document.getElementById('shLib').addEventListener('click', e => {
+  /* P3：词库里点词＝直接念这一个（点读），不再在这层弹小卡；
+     小卡里的三件事在面板里都有等价入口：点词身翻到那张卡、复制、移出。 */
+  const p = e.target.closest('[data-pill]');
+  if(p){
+    e.stopPropagation();
+    const k = String(p.dataset.pill || '').toLowerCase();
+    const w = libObj(k);
+    if(w) AU.of('w', w);
+    libTip('念：' + k);
+    return;
+  }
+  const el = e.target.closest('[data-lib]');
+  if(el){ e.stopPropagation(); libAct(el.dataset.lib, el); return; }
+  if(e.target.id === 'shLib') libShut();       // 点遮罩收起来
+});
+document.getElementById('libClose').addEventListener('click', libShut);
+
+/* ================= 导入导出 ================= */
+const shIO = document.getElementById('shIO');
+document.getElementById('btnIO').addEventListener('click', () => { renderPending(); shIO.classList.add('open'); });
+document.getElementById('ioClose').addEventListener('click', () => shIO.classList.remove('open'));
+
+function renderPending(){
+  const box = document.getElementById('pendBox');
+  const gap = WORDS.filter(w => {
+    const m = merged(w);
+    return !m.ipa || !m.memo || !(m.struct && m.struct.length);
+  }).map(w => w.w);
+  box.textContent = gap.length ? gap.join('\n') : '都填完了';
+}
+document.getElementById('ioAdd').addEventListener('click', () => {
+  const raw = document.getElementById('ioIn').value;
+  const found = raw.match(/[A-Za-z][A-Za-z'-]{1,}/g) || [];
+  const seen = {}, made = [];
+  let first = null;
+  found.forEach(x => {
+    const k = x.toLowerCase();
+    if(seen[k]) return;
+    seen[k] = 1;
+    const existed = !!BY_W[k];
+    const w = newCard(x, { toList: true });   // 粘贴进来的词就是要背的，直接进词表
+    if(!w) return;
+    if(!existed) made.push(k);
+    if(!first && !existed) first = w;
+  });
+  document.getElementById('ioIn').value = '';
+  renderList();
+  const btn = document.getElementById('ioAdd');
+  if(made.length){
+    btn.textContent = '开了 ' + made.length + ' 张空卡';
+    setTimeout(() => { btn.textContent = '加入'; }, 1600);
+  } else {
+    btn.textContent = '都在词库里';
+    setTimeout(() => { btn.textContent = '加入'; }, 1600);
+  }
+  if(first){ go(first); openEdit(); }
+});
+document.getElementById('ioCopy').addEventListener('click', () => {
+  // 还没填完的词：缺音标或缺收口句
+  const gap = WORDS.filter(w => {
+    const m = merged(w);
+    return !m.ipa || !m.memo || !(m.struct && m.struct.length);
+  }).map(w => w.w);
+  const txt = gap.join('\n');
+  if(!txt){ document.getElementById('pendBox').textContent = '都填完了'; return; }
+  navigator.clipboard.writeText(txt).then(()=>{
+    document.getElementById('ioCopy').textContent = '已复制';
+    setTimeout(()=>document.getElementById('ioCopy').textContent='复制没填完的清单', 1200);
+  }).catch(()=>{
+    document.getElementById('pendBox').textContent = txt;
+  });
+});
+document.getElementById('ioExport').addEventListener('click', () => {
+  const dump = {
+    exportedAt: new Date().toISOString(),
+    words: WORDS.length,
+    overrides: overrides,
+    progress: progress,
+    pending: pending,
+    book: bookDump()          // 词素账本一起带走，导入时能还原
+  };
+  const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vocab-backup-' + ymd() + '.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+});
+
+/* ---- 词素账本：单独导出 / 导入（合并式还原，不覆盖本机已有的账） ---- */
+function bookTip(t){
+  const el = document.getElementById('ioBookTip');
+  if(el) el.textContent = t;
+}
+document.getElementById('ioBookOut').addEventListener('click', () => {
+  const dump = bookDump();
+  const blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vocab-morph-' + ymd() + '.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  bookTip('已导出：词源件 ' + Object.keys(dump.source).length + ' 条、自造件 ' + Object.keys(dump.self).length + ' 条、我改件 ' + Object.keys(dump.mine || {}).length + ' 条。');
+});
+document.getElementById('ioBookIn').addEventListener('click', () => {
+  document.getElementById('ioBookFile').click();
+});
+document.getElementById('ioBookFile').addEventListener('change', ev => {
+  const f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const obj = JSON.parse(String(fr.result || '{}'));
+      const src = (obj && obj.source && obj.self) ? obj
+                : (obj && obj.book && obj.book.source) ? obj.book
+                : (obj && obj.morph && obj.morph.source) ? obj.morph
+                : null;
+      if(!src) throw new Error('这份文件里没有账本（要 source / self 两栏）');
+      const r = mergeBook(src);
+      const b = bookOf();
+      renderCard();
+      bookTip('已导入并合并：新增词源件 ' + r.source + ' 条、自造件 ' + r.self + ' 条、我改件 ' + r.mine + ' 条；本机现有词源件 ' + Object.keys(b.source).length + ' 条、自造件 ' + Object.keys(b.self).length + ' 条、我改件 ' + Object.keys(b.mine || {}).length + ' 条。');
+    }catch(err){
+      bookTip('导入失败：' + (err && err.message ? err.message : '文件读不出来'));
+    }
+    ev.target.value = '';
+  };
+  fr.readAsText(f);
+});
+
+document.getElementById('ioReset').addEventListener('click', () => {
+  if(!confirm('清空本机的复习进度、手改内容和自己开的空卡？词库文件不受影响。（词素账本单独存，不会被清掉）')) return;
+  progress = {}; overrides = {}; saveP(); saveO();
+  WORDS = WORDS.filter(w => !w.custom);
+  Object.keys(BY_W).forEach(k => { if(BY_W[k] && BY_W[k].custom) delete BY_W[k]; });
+  cur = WORDS[0] || null;
+  renderCard(); renderList();
+  shIO.classList.remove('open');
+});
+
+/* ================= 启动 ================= */
+function boot(){
+  if(!WORDS.length){
+    document.getElementById('cardHost').innerHTML =
+      '<div class="empty">没读到词库文件。<br>请确认 data/lexicon.js 和 index.html 在同一个文件夹里。</div>';
+    return;
+  }
+  document.getElementById('side').classList.remove('hide');
+  /* 开页先把以前手改过的 w 片段补进账（跨版本也不丢），再画卡片 */
+  Object.keys(overrides || {}).forEach(k => { try{ morphSyncMine(k); }catch(err){} });
+  renderList();
+  const arr = pool();
+  if(arr.length) go(arr[0]);
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
